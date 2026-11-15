@@ -248,6 +248,22 @@ def verifier_plugin(payload: ReglagesPayload):
     return reglages.verifier_plugin(chemin)
 
 
+@app.post("/api/plugin/installer")
+def installer_plugin():
+    """Installe le plugin AI_Index dans le show (sans doublon) puis recharge l'index s'il a répondu."""
+    global INDEX_SHOW
+    import plugin_ma3
+    try:
+        res = plugin_ma3.installer()
+    except Exception as e:
+        return {"ok": False, "deja_installe": False, "etapes": [],
+                "message": tr(f"Installation impossible : {type(e).__name__} : {e}", f"Installation failed: {type(e).__name__}: {e}")}
+    if res["ok"]:
+        INDEX_SHOW = charger_contexte_temp()
+    res["counts"] = compter_index()
+    return res
+
+
 @app.post("/api/sync")
 def sync_show():
     global INDEX_SHOW
