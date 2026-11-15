@@ -63,8 +63,8 @@ def installer() -> dict:
             return {"ok": True, "deja_installe": True, "etapes": etapes, "chemin_xml": None,
                     "message": tr("Le plugin AI_Index est déjà installé et fonctionne.",
                                   "The AI_Index plugin is already installed and working.")}
-        etapes.append(tr("Pas de réponse : le plugin n'est pas (encore) dans le show.",
-                         "No answer: the plugin is not in the show (yet)."))
+        etapes.append(tr("Pas de réponse : le plugin n'est pas (encore) dans le show (« Object not found » sur la console : normal).",
+                         "No answer: the plugin is not in the show yet (\"Object not found\" on the console: normal)."))
 
         # 2. Fichier d'import dans la bibliothèque de la console
         bib = reglages.charger()["dossier_bibliotheque"]
