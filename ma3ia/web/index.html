@@ -334,16 +334,17 @@ function blocInstallPlugin(ouvert) {
   <p><b>Ce que fait « Installer automatiquement » :</b></p><ol style="margin:4px 0 6px 20px">
   <li>l'app lance d'abord le plugin : s'il répond, il est déjà installé et elle s'arrête là (pas de doublon) ;</li>
   <li>sinon, elle écrit <code>ai_index.xml</code> dans la bibliothèque de la console (<code>gma3_library\\datapools\\plugins</code>) ;</li>
-  <li>elle envoie <code>Import Plugin Library "ai_index.xml"</code> : le plugin arrive dans le premier emplacement libre de ton pool Plugins, sous le nom AI_Index ;</li>
+  <li>elle envoie <code>Import Plugin Library "ai_index.xml" At Plugin …</code> : le plugin arrive, sous le nom AI_Index, à l'emplacement choisi ci-dessous dans ton pool Plugins (<b>il doit être vide</b>) ;</li>
   <li>elle le relance pour vérifier que l'index arrive.</li></ol>
   <p><b>À savoir :</b> grandMA3 doit être ouvert avec l'OSC activé ; ça prend jusqu'à 30 secondes ; le plugin fait ensuite partie de ton show, <b>enregistre le show</b> pour le garder ; chaque commande envoyée est visible dans 📜 Journal.</p>`,
   `<p><b>What it does:</b> AI_Index is a small Lua script running inside grandMA3. On every Rescan, the app asks it to write the list of your objects (macros, sequences, groups, presets…) to a file that the AI then reads. <b>It does not change anything in your show.</b></p>
   <p><b>What "Install automatically" does:</b></p><ol style="margin:4px 0 6px 20px">
   <li>the app first runs the plugin: if it answers, it is already installed and the app stops there (no duplicate);</li>
   <li>otherwise, it writes <code>ai_index.xml</code> to the console library (<code>gma3_library\\datapools\\plugins</code>);</li>
-  <li>it sends <code>Import Plugin Library "ai_index.xml"</code>: the plugin lands in the first free slot of your Plugins pool, named AI_Index;</li>
+  <li>it sends <code>Import Plugin Library "ai_index.xml" At Plugin …</code>: the plugin lands, named AI_Index, in the slot chosen below in your Plugins pool (<b>it must be empty</b>);</li>
   <li>it runs it again to check that the index arrives.</li></ol>
   <p><b>Good to know:</b> grandMA3 must be open with OSC enabled; it takes up to 30 seconds; the plugin then becomes part of your show, <b>save the show</b> to keep it; every command sent is visible in 📜 Log.</p>`)}</details>
+  <div class="row"><div class="sm"><label>${tr("Emplacement libre dans le pool Plugins", "Empty slot in the Plugins pool")}</label><input id="plugEmp" type="number" min="1" max="9999" value="${R.reglages.plugin_emplacement}"></div></div>
   <div class="acts2"><button class="btn pri" style="padding:7px 16px" id="bInstPlug">${tr("🔌 Installer automatiquement", "🔌 Install automatically")}</button></div><div class="hint" id="instEtat"></div>`;
 }
 function lierInstall() {
@@ -352,7 +353,9 @@ function lierInstall() {
     b.disabled = true; b.textContent = tr("⏳ Installation… (jusqu'à 30 s)", "⏳ Installing… (up to 30 s)");
     $("instEtat").innerHTML = tr("⏳ Test du plugin, puis import si besoin. Garde grandMA3 ouvert.", "⏳ Testing the plugin, then importing if needed. Keep grandMA3 open.");
     try {
-      if ($("bib")) await J("/reglages", "POST", { reglages: { dossier_bibliotheque: $("bib").value } });
+      const r0 = await J("/reglages", "POST", { reglages: { plugin_emplacement: $("plugEmp").value, ...($("bib") ? { dossier_bibliotheque: $("bib").value } : {}) } });
+      if (!r0.ok) throw new Error(Object.values(r0.erreurs).join(" "));
+      R.reglages = r0.reglages;
       const d = await J("/plugin/installer", "POST");
       $("instEtat").innerHTML = `<div class="msg ${d.ok ? "ok" : "bad"}">${esc(d.message)}</div>` +
         (d.etapes && d.etapes.length ? `<ol style="margin:6px 0 0 18px">${d.etapes.map(e => `<li>${esc(e)}</li>`).join("")}</ol>` : "");

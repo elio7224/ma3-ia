@@ -43,11 +43,24 @@ def test_installation_puis_verification(console, monkeypatch):
     monkeypatch.setattr(tools, "_lancer_plugin_index", lambda: next(reponses))
     r = plugin_ma3.installer()
     assert r["ok"] and not r["deja_installe"] and xml.exists()
-    assert envoyes == ['Import Plugin Library "ai_index.xml"']
+    assert envoyes == ['Import Plugin Library "ai_index.xml" At Plugin 99']
     with open(reglages.chemin_plugin_lua(), "rb") as f:
         lua = f.read()
     contenu = xml.read_text(encoding="utf-8-sig")
     assert b"".join(base64.b64decode(b) for b in re.findall(r'Base64="([^"]*)"', contenu)) == lua
+
+
+def test_emplacement_et_copie_de_l_ancien_fichier(console, monkeypatch):
+    envoyes, xml = console
+    reglages.enregistrer({"plugin_emplacement": 50})
+    xml.parent.mkdir(parents=True)
+    xml.write_text("ancien export", encoding="utf-8")
+    reponses = iter(["pas d'index", None])
+    monkeypatch.setattr(tools, "_lancer_plugin_index", lambda: next(reponses))
+    assert plugin_ma3.installer()["ok"]
+    assert envoyes == ['Import Plugin Library "ai_index.xml" At Plugin 50']
+    assert (xml.parent / "ai_index.xml.bak").read_text(encoding="utf-8") == "ancien export"
+    assert reglages.enregistrer({"plugin_emplacement": 0})[1]
 
 
 def test_echec_signale(console, monkeypatch):

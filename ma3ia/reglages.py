@@ -30,6 +30,7 @@ DEFAUTS = {
     "plafond_session_usd": 1.0,     # 0 = pas de plafond
     "langue": "auto",               # auto (langue de Windows), fr ou en
     "sauvegarde_auto": True,        # SaveShow avant les actions de masse
+    "plugin_emplacement": 99,       # emplacement du pool Plugins pour l'installation d'AI_Index
     "premier_lancement_fait": False,
 }
 THEMES = ("sombre", "clair")
@@ -94,6 +95,12 @@ def _valider(cle: str, valeur):
         except (TypeError, ValueError):
             return None, tr("Le plafond doit être un montant en dollars (ex : 1,50).", "The limit must be an amount in dollars (e.g. 1.50).")
         return (v, None) if 0 <= v <= 1000 else (None, tr("Le plafond doit être entre 0 et 1000 $ (0 = aucun plafond).", "The limit must be between 0 and 1000 $ (0 = no limit)."))
+    if cle == "plugin_emplacement":
+        try:
+            n = int(valeur)
+        except (TypeError, ValueError):
+            return None, tr("L'emplacement du plugin doit être un nombre.", "The plugin slot must be a number.")
+        return (n, None) if 1 <= n <= 9999 else (None, tr("L'emplacement du plugin doit être entre 1 et 9999.", "The plugin slot must be between 1 and 9999."))
     if cle == "langue":
         return (valeur, None) if valeur in LANGUES else (None, tr(f"Langue inconnue : {valeur!r}.", f"Unknown language: {valeur!r}."))
     if cle in ("premier_lancement_fait", "sauvegarde_auto"):

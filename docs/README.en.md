@@ -71,7 +71,8 @@ To read your show, the AI needs a small Lua plugin in grandMA3: `plugin/ai_index
 - **Automatic installation** (first-launch wizard or ⚙ Settings → "Install automatically"):
   1. the app first runs the plugin: if it answers, it is already installed and nothing is imported (no duplicate);
   2. otherwise it writes `ai_index.xml` to `gma3_library\datapools\plugins`;
-  3. it sends `Import Plugin Library "ai_index.xml"`: the plugin lands in the first free slot of the Plugins pool;
+  3. it sends `Import Plugin Library "ai_index.xml" At Plugin <n>`: the plugin lands in the chosen slot
+     (99 by default, editable next to the button; **it must be empty** in the Plugins pool);
   4. it runs it again to check that the index arrives.
 
   grandMA3 must be open with OSC enabled. The plugin then becomes part of your show: **save the show** to keep it.
