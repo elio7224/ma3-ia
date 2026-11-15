@@ -1,5 +1,7 @@
 # MA3-IA — grandMA3 AI Control
 
+🇬🇧 [English version](README.en.md)
+
 Assistant IA (Claude, API Anthropic) qui pilote une console **grandMA3 onPC** sous Windows :
 il lit ton showfile (index + exports XML) et envoie des commandes à la console par **OSC**.
 
@@ -10,6 +12,9 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 - Répondre à des questions sur ton show (macros, séquences, presets, groupes, MAtricks, apparences).
 - Créer et modifier des objets : macros (y compris en masse), MAtricks, grilles d'effets, commandes libres.
 - Consulter le manuel officiel grandMA3 quand il doute d'une syntaxe.
+- **Journal des commandes** : tout ce qui a été envoyé à la console, avec l'heure et l'outil de l'IA qui l'a envoyé.
+- **Garde-fou de coût** : plafond de dépense par session, alerte à 80 %, blocage au plafond.
+- **Interface en français et en anglais** (automatique selon Windows, modifiable dans les Réglages).
 
 ## Prérequis
 - Windows 10/11, Python 3.12, grandMA3 onPC.
@@ -27,6 +32,8 @@ Détails (données, création du `.exe`, tests) : voir [README_BUREAU.md](README
 - La clé API est rangée dans le coffre Windows (Credential Manager), jamais dans un fichier du projet.
 - OSC est à sens unique : l'IA envoie les commandes mais ne peut pas confirmer qu'elles ont réussi.
   Teste d'abord sur une copie de ton show.
+- Ton historique de chat, tes réglages et le journal restent sur ton PC (dossier de configuration de l'app),
+  jamais dans le dossier du projet.
 
 ## Licence
 Code sous licence [MIT](LICENSE) : libre d'utilisation, de modification et de redistribution, en gardant la mention de copyright.
