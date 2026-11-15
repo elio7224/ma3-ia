@@ -18,6 +18,9 @@ import tools
 from tools import preparer_et_exporter_show, charger_contexte_temp
 from outils import TOOLS, FUNCS
 import reglages
+import journal
+import i18n
+from i18n import tr
 from config import (MAX_TOKENS, ajouter_usage, limiter_historique, bloc_systeme, choisir_modele, resume_usage, usage_vide)
 
 HISTORIQUE_FICHIER = reglages.chemin_historique()
@@ -59,7 +62,8 @@ def _scan_initial():
     global INDEX_SHOW
     print("🧹 Nettoyage et exportation initiales...")
     try:
-        preparer_et_exporter_show()
+        with journal.source("Scan au démarrage"):
+            preparer_et_exporter_show()
         INDEX_SHOW = charger_contexte_temp()
         print("✅ Contexte initial chargé.")
     except Exception as e:
@@ -144,7 +148,41 @@ def compter_index():
 def status():
     from config import MODELES
     return {"counts": compter_index(), "modeles": {k: v["nom"] for k, v in MODELES.items()},
-            "modele_defaut": reglages.charger()["modele_defaut"], "cle": reglages.etat_cle()["presente"]}
+            "modele_defaut": reglages.charger()["modele_defaut"], "cle": reglages.etat_cle()["presente"],
+            "session": etat_session(), "langue": i18n.langue()}
+
+
+# ---------------------------------------------------------------- garde-fou de coût (session = depuis le lancement)
+
+COUT_SESSION = {"usd": 0.0}
+SEUIL_ALERTE = 0.8
+
+
+def etat_session():
+    plafond = reglages.charger()["plafond_session_usd"]
+    cout = round(COUT_SESSION["usd"], 5)
+    return {"cout_usd": cout, "plafond_usd": plafond,
+            "alerte": plafond > 0 and cout >= SEUIL_ALERTE * plafond,
+            "atteint": plafond > 0 and cout >= plafond}
+
+
+@app.post("/api/session/reinitialiser")
+def reinitialiser_session():
+    COUT_SESSION["usd"] = 0.0
+    return etat_session()
+
+
+# ---------------------------------------------------------------- journal des commandes envoyées à la console
+
+@app.get("/api/journal")
+def lire_journal(limite: int = 500):
+    return {"entrees": journal.lire(min(max(limite, 1), 5000)), "fichier": journal.fichier_journal()}
+
+
+@app.delete("/api/journal")
+def effacer_journal():
+    journal.effacer()
+    return {"status": "success"}
 
 
 # ---------------------------------------------------------------- réglages (jamais de clé en clair dans les réponses)
@@ -167,6 +205,7 @@ def lire_reglages():
     from config import MODELES
     r = reglages.charger()
     return {"reglages": r, "cle": reglages.etat_cle(), "modeles": {k: v["nom"] for k, v in MODELES.items()},
+            "langue": i18n.langue(),
             "plugin": reglages.verifier_plugin(r["dossier_bibliotheque"]),
             "fichier": reglages.fichier_reglages()}
 
@@ -213,10 +252,11 @@ def verifier_plugin(payload: ReglagesPayload):
 def sync_show():
     global INDEX_SHOW
     try:
-        msg = preparer_et_exporter_show()
+        with journal.source("Rescan"):
+            msg = preparer_et_exporter_show()
         INDEX_SHOW = charger_contexte_temp()
     except Exception as e:
-        return {"status": "error", "message": f"Rescan impossible : {type(e).__name__} : {e}", "counts": compter_index()}
+        return {"status": "error", "message": tr(f"Rescan impossible : {type(e).__name__} : {e}", f"Rescan failed: {type(e).__name__}: {e}"), "counts": compter_index()}
     counts = compter_index()
     return {"status": "success" if any(counts.values()) else "warning", "message": msg, "counts": counts}
 
@@ -235,35 +275,46 @@ def chat(payload: ChatPayload):
         if avec_historique:
             sauvegarder_memoire_disque(msgs)
         return {"response": texte, "logs": logs, "actions": actions, "messages": msgs,
-                "usage": resume_usage(usage, cle_modele)}
+                "usage": resume_usage(usage, cle_modele), "session": etat_session()}
 
     if not messages_nettoyes:
-        return reponse("⚠️ Message vide ou invalide.", avec_historique=False)
+        return reponse(tr("⚠️ Message vide ou invalide.", "⚠️ Empty or invalid message."), avec_historique=False)
 
     client = obtenir_client()
     if client is None:
-        return reponse("⚠️ Aucune clé API configurée. Ouvre **⚙ Réglages** pour l'enregistrer.", avec_historique=False)
+        return reponse(tr("⚠️ Aucune clé API configurée. Ouvre **⚙ Réglages** pour l'enregistrer.", "⚠️ No API key configured. Open **⚙ Settings** to add it."), avec_historique=False)
+
+    if etat_session()["atteint"]:
+        s = etat_session()
+        return reponse(tr(f"⛔ **Plafond de dépense atteint** ({s['cout_usd']:.2f} $ sur {s['plafond_usd']:.2f} $ pour cette session). "
+                          "Remets le compteur à zéro ou relève le plafond dans **⚙ Réglages**.",
+                          f"⛔ **Spending limit reached** ({s['cout_usd']:.2f} $ of {s['plafond_usd']:.2f} $ for this session). "
+                          "Reset the counter or raise the limit in **⚙ Settings**."), avec_historique=False)
 
     system = bloc_systeme(INDEX_SHOW)
     historique_ia = messages_nettoyes.copy()
+    cout_compte = 0.0
 
     for _tour in range(max_tours):
         try:
             r = client.messages.create(model=modele_id, max_tokens=MAX_TOKENS, system=system,
                                        tools=TOOLS, messages=historique_ia)
         except anthropic.AuthenticationError:
-            return reponse("⚠️ Clé API refusée. Vérifie-la dans ⚙ Réglages.", avec_historique=False)
+            return reponse(tr("⚠️ Clé API refusée. Vérifie-la dans ⚙ Réglages.", "⚠️ API key rejected. Check it in ⚙ Settings."), avec_historique=False)
         except anthropic.RateLimitError:
-            return reponse("⚠️ Limite de débit atteinte. Attends une minute.", avec_historique=False)
+            return reponse(tr("⚠️ Limite de débit atteinte. Attends une minute.", "⚠️ Rate limit reached. Wait a minute."), avec_historique=False)
         except Exception as e:
-            return reponse(f"⚠️ Erreur lors de l'appel API : {type(e).__name__} : {e}", avec_historique=False)
+            return reponse(tr(f"⚠️ Erreur lors de l'appel API : {type(e).__name__} : {e}", f"⚠️ API call error: {type(e).__name__}: {e}"), avec_historique=False)
 
         ajouter_usage(usage, r.usage)
+        cout_requete = resume_usage(usage, cle_modele)["cout_usd"]
+        COUT_SESSION["usd"] += cout_requete - cout_compte
+        cout_compte = cout_requete
 
         if r.stop_reason == "max_tokens":
-            logs.append("⚠️ Réponse coupée (max_tokens atteint).")
+            logs.append(tr("⚠️ Réponse coupée (max_tokens atteint).", "⚠️ Response cut off (max_tokens reached)."))
             texte = "".join(b.text for b in r.content if b.type == "text").strip()
-            return reponse((texte + "\n\n" if texte else "") + "⚠️ Réponse coupée car trop longue.")
+            return reponse((texte + "\n\n" if texte else "") + tr("⚠️ Réponse coupée car trop longue.", "⚠️ Response cut off because it was too long."))
 
         historique_ia.append({"role": "assistant", "content": r.content})
         appels = [b for b in r.content if b.type == "tool_use"]
@@ -272,11 +323,19 @@ def chat(payload: ChatPayload):
             texte = "".join(b.text for b in r.content if b.type == "text").strip()
             return reponse(texte or "✅ Terminé.")
 
+        if etat_session()["atteint"]:
+            logs.append(tr("⛔ Plafond de dépense atteint : actions suivantes annulées.", "⛔ Spending limit reached: remaining actions cancelled."))
+            return reponse(tr("⛔ **Plafond de dépense atteint pendant la demande** : j'ai arrêté avant d'envoyer les actions suivantes. "
+                              "Remets le compteur à zéro ou relève le plafond dans **⚙ Réglages**, puis redemande.",
+                              "⛔ **Spending limit reached during the request**: I stopped before sending the remaining actions. "
+                              "Reset the counter or raise the limit in **⚙ Settings**, then ask again."))
+
         resultats = []
         for b in appels:
             log_entry = f"⚡ Exécution : {b.name}({json.dumps(b.input, ensure_ascii=False)})"
             try:
-                res, erreur = FUNCS[b.name](**b.input), False
+                with journal.source(f"IA · {b.name}"):
+                    res, erreur = FUNCS[b.name](**b.input), False
             except Exception as e:
                 res, erreur = f"Erreur d'exécution de l'outil : {type(e).__name__} : {e}", True
             logs.append(log_entry + f" ➔ {res}")
@@ -288,7 +347,7 @@ def chat(payload: ChatPayload):
 
         historique_ia.append({"role": "user", "content": resultats})
 
-    return reponse(f"⚠️ J'ai atteint la limite de {max_tours} tours d'outils pour une demande.")
+    return reponse(tr(f"⚠️ J'ai atteint la limite de {max_tours} tours d'outils pour une demande.", f"⚠️ I reached the limit of {max_tours} tool rounds for one request."))
 
 
 if __name__ == "__main__":

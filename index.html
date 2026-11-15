@@ -79,10 +79,11 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
   <div class="hr">
     <span class="chip"><i id="dot" class="dot"></i><span id="st">Connexion…</span></span>
     <select id="modele" class="btn" title="Modèle de l'IA"><option value="haiku">Haiku 5.5 · économique</option><option value="sonnet">Sonnet 5.5 · plus puissant</option></select>
-    <span class="chip tot" id="cout" title="Estimation du coût de la session">Session : ≈ 0,000 $</span>
+    <span class="chip tot" id="cout" title="Coût estimé depuis le lancement de l'app, et plafond (⚙ Réglages)">Session : ≈ 0,000 $</span>
     <button id="bRescan" class="btn">🔄 Rescan</button>
     <button id="bNew" class="btn">🗑 Nouvelle conversation</button>
     <button id="bLogs" class="btn">📋 Actions</button>
+    <button id="bJournal" class="btn" title="Tout ce qui a été envoyé à la console, avec l'heure">📜 Journal</button>
     <button id="bSet" class="btn">⚙ Réglages</button>
   </div>
 </header>
@@ -99,6 +100,9 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
 <div id="ov"><div class="pn" id="pn"></div></div>
 <script>
 const API = "/api", $ = id => document.getElementById(id);
+// Langue de l'interface ("fr" ou "en"), fournie par le serveur (réglage « langue », auto = langue de Windows).
+let LANG = "fr";
+const tr = (fr, en) => LANG === "en" ? en : fr;
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 let hist = [], busy = false;
 
@@ -123,7 +127,7 @@ function md(src) {
     if (!T) { flush(); i++; continue; }
     if ((m = T.match(/^\u0001(\d+)\u0001$/))) {
       flush(); const b = blocks[m[1]];
-      out += `<div class="code"><div class="code-h"><span>${esc(b.l || "code")}</span><button class="copy">Copier</button></div><pre><code>${esc(b.c)}</code></pre></div>`;
+      out += `<div class="code"><div class="code-h"><span>${esc(b.l || "code")}</span><button class="copy">${tr("Copier", "Copy")}</button></div><pre><code>${esc(b.c)}</code></pre></div>`;
       i++; continue;
     }
     if ((m = T.match(/^(#{1,4})\s+(.*)$/))) { flush(); const n = m[1].length + 1; out += `<h${n}>${inline(m[2])}</h${n}>`; i++; continue; }
@@ -168,23 +172,36 @@ function addAct(a) {
     (Object.keys(a.input || {}).length ? `<pre>${esc(JSON.stringify(a.input, null, 2))}</pre>` : "") + `<pre>${esc(res)}</pre>`;
   box.appendChild(d); box.scrollTop = box.scrollHeight;
 }
-let totalCout = 0;
-try { totalCout = parseFloat(localStorage.getItem("coutSession")) || 0; } catch (e) {}
-const fr = n => (n || 0).toLocaleString("fr-FR");
-const majCout = () => { $("cout").textContent = "Session : ≈ " + totalCout.toFixed(3).replace(".", ",") + " $"; };
+let session = null, alerteVue = false;
+const nb = n => (n || 0).toLocaleString(LANG === "en" ? "en-US" : "fr-FR");
+const usd = (n, d = 2) => LANG === "en" ? (n || 0).toFixed(d) : (n || 0).toFixed(d).replace(".", ",");
+// Coût de la session (calculé par le serveur depuis le lancement) + alerte à 80 % du plafond.
+function majCout(s) {
+  if (s) session = s;
+  if (!session) return;
+  const c = $("cout");
+  c.textContent = tr("Session : ≈ ", "Session: ≈ ") + usd(session.cout_usd, 3) + " $" + (session.plafond_usd > 0 ? " / " + usd(session.plafond_usd) + " $" : "");
+  c.style.color = session.atteint ? "var(--bad)" : session.alerte ? "var(--yl)" : "";
+  if (session.alerte && !session.atteint && !alerteVue) {
+    alerteVue = true;
+    addMsg("assistant", tr(`⚠️ **Attention : ${usd(session.cout_usd)} $ dépensés sur ${usd(session.plafond_usd)} $ de plafond pour cette session.** Les demandes seront bloquées au plafond (modifiable dans ⚙ Réglages).`,
+      `⚠️ **Warning: ${usd(session.cout_usd)} $ spent out of a ${usd(session.plafond_usd)} $ limit for this session.** Requests will be blocked at the limit (change it in ⚙ Settings).`));
+  }
+  if (!session.alerte) alerteVue = false;
+}
 function addCout(u) {
-  totalCout += u.cout_usd || 0;
-  try { localStorage.setItem("coutSession", totalCout); } catch (e) {}
-  majCout();
   const entree = (u.input || 0) + (u.cache_read || 0) + (u.cache_write || 0);
   const d = document.createElement("div"); d.className = "cost";
-  d.textContent = `${u.modele} · ${fr(entree)} tokens en entrée (dont ${fr(u.cache_read)} en cache) · ${fr(u.output)} en sortie · ≈ ${(u.cout_usd || 0).toFixed(4).replace(".", ",")} $`;
+  d.textContent = tr(`${u.modele} · ${nb(entree)} tokens en entrée (dont ${nb(u.cache_read)} en cache) · ${nb(u.output)} en sortie · ≈ ${usd(u.cout_usd, 4)} $`,
+    `${u.modele} · ${nb(entree)} input tokens (${nb(u.cache_read)} cached) · ${nb(u.output)} output · ≈ ${usd(u.cout_usd, 4)} $`);
   $("msgs").appendChild(d); scroll();
 }
 function welcome() {
-  addMsg("assistant", "## Bonjour 👋\nL'agent grandMA3 est prêt. Voici quelques idées pour commencer :");
+  addMsg("assistant", tr("## Bonjour 👋\nL'agent grandMA3 est prêt. Voici quelques idées pour commencer :",
+    "## Hello 👋\nThe grandMA3 agent is ready. Here are a few ideas to get started:"));
   const c = document.createElement("div"); c.className = "chips";
-  ["Liste mes macros (numéro et nom)", "Que contient mon index ?", "Lis la macro 2002 et résume-la"].forEach(t => {
+  (LANG === "en" ? ["List my macros (number and name)", "What is in my index?", "Read macro 2002 and summarise it"]
+    : ["Liste mes macros (numéro et nom)", "Que contient mon index ?", "Lis la macro 2002 et résume-la"]).forEach(t => {
     const b = document.createElement("button"); b.textContent = t; b.onclick = () => send(t); c.appendChild(b);
   });
   $("msgs").appendChild(c);
@@ -192,11 +209,12 @@ function welcome() {
 async function refresh() {
   try {
     const d = await (await fetch(API + "/status")).json();
-    const noms = { macros: "macros", groups: "groupes", sequences: "séquences", layouts: "layouts", matricks: "matricks", presets: "presets", shapes: "shapes" };
+    const noms = LANG === "en" ? {} : { groups: "groupes", sequences: "séquences" };
     const parts = Object.entries(d.counts || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${noms[k] || k}`);
-    $("st").textContent = parts.length ? "Index : " + parts.join(" · ") : "Index vide : plugin AI_Index ? (puis Rescan)";
+    $("st").textContent = parts.length ? tr("Index : ", "Index: ") + parts.join(" · ") : tr("Index vide : plugin AI_Index ? (puis Rescan)", "Empty index: AI_Index plugin? (then Rescan)");
     $("dot").className = "dot " + (parts.length ? "ok" : "warn");
-  } catch (e) { $("st").textContent = "Serveur injoignable"; $("dot").className = "dot bad"; }
+    if (d.session) majCout(d.session);
+  } catch (e) { $("st").textContent = tr("Serveur injoignable", "Server unreachable"); $("dot").className = "dot bad"; }
 }
 async function send(txt) {
   txt = (txt ?? $("inp").value).trim();
@@ -209,14 +227,15 @@ async function send(txt) {
     if (!r.ok) throw new Error("HTTP " + r.status);
     const d = await r.json(); t.remove();
     if (d.messages) hist = d.messages;
-    addMsg("assistant", d.response || "(réponse vide)");
+    addMsg("assistant", d.response || tr("(réponse vide)", "(empty response)"));
     if (d.usage) addCout(d.usage);
+    if (d.session) majCout(d.session);
     if (d.actions && d.actions.length) d.actions.forEach(addAct);
     else (d.logs || []).forEach(l => addAct({ name: "log", input: {}, result: l, error: l.startsWith("⚠️") }));
     refresh();
   } catch (e) {
     t.remove(); hist.pop();
-    addMsg("assistant", "⚠️ Connexion impossible avec le serveur : " + e.message + ". Redémarre l'application.");
+    addMsg("assistant", tr("⚠️ Connexion impossible avec le serveur : ", "⚠️ Cannot reach the server: ") + e.message + tr(". Redémarre l'application.", ". Restart the application."));
   }
   busy = false; $("send").disabled = false; $("inp").focus();
 }
@@ -226,26 +245,43 @@ $("send").onclick = () => send();
 $("inp").addEventListener("input", fit);
 $("inp").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
 $("bLogs").onclick = () => $("logs").classList.toggle("hide");
+const dateFr = iso => { const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString(LANG === "en" ? "en-GB" : "fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }); };
+// Les sources sont enregistrées en français dans le journal : traduites à l'affichage.
+const SOURCES_EN = { "Scan au démarrage": "Startup scan", "Test de connexion": "Connection test" };
+const sourceTxt = s => LANG === "en" ? (SOURCES_EN[s] || String(s).replace(/^IA · /, "AI · ")) : s;
+async function journalOuvrir() {
+  let d;
+  try { d = await J("/journal?limite=500"); } catch (e) { d = { entrees: [], fichier: "?" }; }
+  const lignes = d.entrees.map(e => `<tr><td style="white-space:nowrap">${esc(dateFr(e.heure))}</td><td style="white-space:nowrap">${esc(sourceTxt(e.source))}</td><td><code>${esc(e.commande)}</code></td></tr>`).join("");
+  ouvrir(`<h2>${tr("📜 Journal des commandes", "📜 Command log")}</h2>
+  <div class="hint">${tr(`Tout ce qui a été envoyé à la console, le plus récent en haut (${d.entrees.length} affichées, 500 max). OSC est à sens unique : « envoyé » ne veut pas dire « exécuté ».`,
+    `Everything sent to the console, newest first (${d.entrees.length} shown, 500 max). OSC is one-way: "sent" does not mean "executed".`)}<br>${tr("Fichier", "File")} : <code>${esc(d.fichier)}</code></div>
+  <div class="tw" style="max-height:55vh;overflow:auto;margin-top:10px">${lignes ? `<table><thead><tr><th>${tr("Heure", "Time")}</th><th>Source</th><th>${tr("Commande", "Command")}</th></tr></thead><tbody>${lignes}</tbody></table>` : `<p class="mu" style="padding:12px">${tr("Aucune commande envoyée pour l’instant.", "No command sent yet.")}</p>`}</div>
+  <div class="foot"><button class="btn" id="bJEff">${tr("🗑 Effacer le journal", "🗑 Clear log")}</button><div class="acts2" style="margin:0"><button class="btn" id="bJMaj">${tr("Actualiser", "Refresh")}</button><button class="btn pri" style="padding:8px 22px" id="bJFer">${tr("Fermer", "Close")}</button></div></div>`);
+  $("bJMaj").onclick = journalOuvrir; $("bJFer").onclick = fermer;
+  $("bJEff").onclick = async () => { if (!confirm(tr("Effacer tout le journal des commandes ?", "Clear the whole command log?"))) return; await J("/journal", "DELETE"); journalOuvrir(); };
+}
+$("bJournal").onclick = journalOuvrir;
 $("bRescan").onclick = async () => {
-  const b = $("bRescan"); b.disabled = true; b.textContent = "⏳ Scan…";
+  const b = $("bRescan"); b.disabled = true; b.textContent = tr("⏳ Scan…", "⏳ Scanning…");
   try {
     const r = await fetch(API + "/sync", { method: "POST" });
     const t = await r.text();
-    let d; try { d = JSON.parse(t); } catch (_) { throw new Error("réponse du serveur illisible (HTTP " + r.status + ") : " + t.slice(0, 200)); }
-    const titre = d.status === "success" ? "✅ **Index mis à jour.**" : d.status === "error" ? "❌ **Échec du Rescan.**" : "⚠️ **Index vide.**";
+    let d; try { d = JSON.parse(t); } catch (_) { throw new Error(tr("réponse du serveur illisible (HTTP ", "unreadable server response (HTTP ") + r.status + ") : " + t.slice(0, 200)); }
+    const titre = d.status === "success" ? tr("✅ **Index mis à jour.**", "✅ **Index updated.**") : d.status === "error" ? tr("❌ **Échec du Rescan.**", "❌ **Rescan failed.**") : tr("⚠️ **Index vide.**", "⚠️ **Empty index.**");
     addMsg("assistant", titre + "\n\n" + (d.message || ""));
-  } catch (e) { addMsg("assistant", "⚠️ Rescan impossible : " + e.message); }
+  } catch (e) { addMsg("assistant", tr("⚠️ Rescan impossible : ", "⚠️ Rescan failed: ") + e.message); }
   b.disabled = false; b.textContent = "🔄 Rescan"; refresh();
 };
 $("bNew").onclick = async () => {
-  if (!confirm("Effacer la conversation et la mémoire de l'IA ?")) return;
+  if (!confirm(tr("Effacer la conversation et la mémoire de l'IA ?", "Clear the conversation and the AI's memory?"))) return;
   try { await fetch(API + "/history", { method: "DELETE" }); } catch (e) {}
-  hist = []; totalCout = 0; try { localStorage.removeItem("coutSession"); } catch (e) {} majCout(); $("msgs").innerHTML = ""; $("acts").innerHTML = '<p class="mu">Rien pour l\'instant.</p>'; welcome();
+  hist = []; $("msgs").innerHTML = ""; $("acts").innerHTML = `<p class="mu">${tr("Rien pour l'instant.", "Nothing yet.")}</p>`; welcome();
 };
 $("msgs").addEventListener("click", e => {
   if (!e.target.classList.contains("copy")) return;
   navigator.clipboard.writeText(e.target.closest(".code").querySelector("code").textContent);
-  e.target.textContent = "Copié ✓"; setTimeout(() => e.target.textContent = "Copier", 1200);
+  e.target.textContent = tr("Copié ✓", "Copied ✓"); setTimeout(() => e.target.textContent = tr("Copier", "Copy"), 1200);
 });
 
 try { $("modele").value = localStorage.getItem("modele") || "haiku"; } catch (e) {}
@@ -253,7 +289,7 @@ $("modele").addEventListener("change", () => { try { localStorage.setItem("model
 
 /* ---------- Réglages & premier lancement ---------- */
 const J = async (u, m = "GET", b) => (await fetch(API + u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined })).json();
-const SRC = { coffre: "coffre Windows", variable: "variable ANTHROPIC_API_KEY", fichier: "ancien fichier cle_api.txt" };
+const SRC = () => ({ coffre: tr("coffre Windows", "Windows Credential Manager"), variable: tr("variable ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY variable"), fichier: tr("ancien fichier cle_api.txt", "old cle_api.txt file") });
 let R = null;
 const applyTheme = t => {
   t = t === "clair" ? "clair" : "sombre";
@@ -265,52 +301,54 @@ window.addEventListener("pywebviewready", () => applyTheme(document.documentElem
 const say = (id, ok, t) => { const e = $(id); if (e) { e.className = "msg " + (ok ? "ok" : "bad"); e.textContent = t; } };
 const fermer = () => $("ov").classList.remove("on");
 const ouvrir = html => { $("pn").innerHTML = html; $("ov").classList.add("on"); };
-const etatCle = c => c.presente ? "✅ Clé enregistrée : <code>" + esc(c.masque) + "</code> (" + SRC[c.source] + ")" : "❌ Aucune clé enregistrée.";
+const etatCle = c => c.presente ? tr("✅ Clé enregistrée : ", "✅ Key saved: ") + "<code>" + esc(c.masque) + "</code> (" + SRC()[c.source] + ")" : tr("❌ Aucune clé enregistrée.", "❌ No key saved.");
 
 function blocCle() {
   const c = R.cle;
-  return `<label>Clé API Anthropic</label>
+  return `<label>${tr("Clé API Anthropic", "Anthropic API key")}</label>
   <div class="hint" id="cleEtat">${etatCle(c)}</div>
-  <input id="cleIn" type="password" autocomplete="off" placeholder="sk-ant-…  (colle une nouvelle clé pour la remplacer)">
-  <div class="acts2"><button class="btn" id="bTestCle">Tester la clé</button><button class="btn pri" style="padding:7px 16px" id="bSaveCle">Enregistrer</button>${c.source === "coffre" ? '<button class="btn" id="bDelCle">Supprimer</button>' : ""}</div>
+  <input id="cleIn" type="password" autocomplete="off" placeholder="${tr("sk-ant-…  (colle une nouvelle clé pour la remplacer)", "sk-ant-…  (paste a new key to replace it)")}">
+  <div class="acts2"><button class="btn" id="bTestCle">${tr("Tester la clé", "Test key")}</button><button class="btn pri" style="padding:7px 16px" id="bSaveCle">${tr("Enregistrer", "Save")}</button>${c.source === "coffre" ? `<button class="btn" id="bDelCle">${tr("Supprimer", "Delete")}</button>` : ""}</div>
   <div class="msg" id="cleMsg"></div>
-  <div class="hint">La clé est stockée dans le coffre Windows (jamais dans un fichier ni dans le code) et n'est jamais réaffichée en entier.</div>`;
+  <div class="hint">${tr("La clé est stockée dans le coffre Windows (jamais dans un fichier ni dans le code) et n'est jamais réaffichée en entier.", "The key is stored in Windows Credential Manager (never in a file or in the code) and is never shown in full again.")}</div>`;
 }
 function blocOsc() {
   const r = R.reglages;
-  return `<div class="row"><div><label>Adresse IP de la console</label><input id="oscH" value="${esc(r.osc_hote)}"></div><div class="sm"><label>Port OSC</label><input id="oscP" type="number" value="${r.osc_port}"></div></div>
-  <div class="acts2"><button class="btn" id="bTestOsc">Tester la connexion</button></div><div class="msg" id="oscMsg"></div>
-  <div class="hint">grandMA3 onPC sur ce PC : <code>127.0.0.1</code>. Active l'OSC en entrée dans les réglages In &amp; Out de la console, sur le même port (UDP). OSC est à sens unique : l'app ne peut pas confirmer la réception, c'est la console qui doit la montrer.</div>`;
+  return `<div class="row"><div><label>${tr("Adresse IP de la console", "Console IP address")}</label><input id="oscH" value="${esc(r.osc_hote)}"></div><div class="sm"><label>${tr("Port OSC", "OSC port")}</label><input id="oscP" type="number" value="${r.osc_port}"></div></div>
+  <div class="acts2"><button class="btn" id="bTestOsc">${tr("Tester la connexion", "Test connection")}</button></div><div class="msg" id="oscMsg"></div>
+  <div class="hint">${tr("grandMA3 onPC sur ce PC : <code>127.0.0.1</code>. Active l'OSC en entrée dans les réglages In &amp; Out de la console, sur le même port (UDP). OSC est à sens unique : l'app ne peut pas confirmer la réception, c'est la console qui doit la montrer.",
+    "grandMA3 onPC on this PC: <code>127.0.0.1</code>. Enable OSC input in the console's In &amp; Out settings, on the same port (UDP). OSC is one-way: the app cannot confirm reception, only the console can show it.")}</div>`;
 }
 function blocPlugin(p) {
   const l = (ok, t) => `<div>${ok ? "✅" : "❌"} ${t}</div>`;
-  return l(p.bibliotheque_ok, "Dossier de la bibliothèque trouvé") + l(p.plugin_ok, "Plugin <code>AI_Index</code> importé dans la console") +
-    l(p.index_ok, p.index_ok ? "Index déjà produit (il y a " + p.index_age_min + " min)" : "Index pas encore produit (fais un Rescan quand la console tourne)") +
-    (p.plugin_ok ? "" : `<div class="hint">Pour l'importer : dans grandMA3, ouvre le pool des Plugins et importe le fichier <code>${esc(p.lua_source)}</code>, nomme-le <code>AI_Index</code>, puis relance la vérification. (Ce fichier est dans le dossier de l'application.)</div>`);
+  return l(p.bibliotheque_ok, tr("Dossier de la bibliothèque trouvé", "Library folder found")) + l(p.plugin_ok, tr("Plugin <code>AI_Index</code> importé dans la console", "<code>AI_Index</code> plugin imported in the console")) +
+    l(p.index_ok, p.index_ok ? tr("Index déjà produit (il y a " + p.index_age_min + " min)", "Index already produced (" + p.index_age_min + " min ago)") : tr("Index pas encore produit (fais un Rescan quand la console tourne)", "Index not produced yet (run a Rescan while the console is running)")) +
+    (p.plugin_ok ? "" : `<div class="hint">${tr(`Pour l'importer : dans grandMA3, ouvre le pool des Plugins et importe le fichier <code>${esc(p.lua_source)}</code>, nomme-le <code>AI_Index</code>, puis relance la vérification. (Ce fichier est dans le dossier de l'application.)`,
+      `To import it: in grandMA3, open the Plugins pool and import the file <code>${esc(p.lua_source)}</code>, name it <code>AI_Index</code>, then check again. (This file is in the application folder.)`)}</div>`);
 }
 function lierPlugin() {
   const b = $("bPlug"), libelle = b.textContent;
   b.onclick = async () => {
-    b.disabled = true; b.textContent = "Vérification…";
-    $("plugEtat").innerHTML = "⏳ Vérification en cours…";
+    b.disabled = true; b.textContent = tr("Vérification…", "Checking…");
+    $("plugEtat").innerHTML = tr("⏳ Vérification en cours…", "⏳ Checking…");
     try {
       R.plugin = await J("/reglages/plugin", "POST", { reglages: { dossier_bibliotheque: $("bib").value } });
       if (R.plugin.bibliotheque) $("bib").value = R.plugin.bibliotheque;
-      $("plugEtat").innerHTML = `<div>Vérifié à ${new Date().toLocaleTimeString()} : <code>${esc(R.plugin.bibliotheque || $("bib").value)}</code></div>` + blocPlugin(R.plugin);
+      $("plugEtat").innerHTML = `<div>${tr("Vérifié à", "Checked at")} ${new Date().toLocaleTimeString(LANG === "en" ? "en-GB" : "fr-FR")} : <code>${esc(R.plugin.bibliotheque || $("bib").value)}</code></div>` + blocPlugin(R.plugin);
     } catch (e) {
-      $("plugEtat").innerHTML = `<div class="msg bad">Vérification impossible : ${esc(e.message || String(e))}</div>`;
+      $("plugEtat").innerHTML = `<div class="msg bad">${tr("Vérification impossible : ", "Check failed: ")}${esc(e.message || String(e))}</div>`;
     } finally { b.disabled = false; b.textContent = libelle; }
   };
 }
 function lierCle() {
-  $("bTestCle").onclick = async () => { say("cleMsg", true, "Test en cours…"); const d = await J("/reglages/tester-cle", "POST", { cle: $("cleIn").value.trim() }); say("cleMsg", d.ok, d.message); };
+  $("bTestCle").onclick = async () => { say("cleMsg", true, tr("Test en cours…", "Testing…")); const d = await J("/reglages/tester-cle", "POST", { cle: $("cleIn").value.trim() }); say("cleMsg", d.ok, d.message); };
   $("bSaveCle").onclick = async () => {
     const d = await J("/reglages/cle", "POST", { cle: $("cleIn").value.trim() });
     say("cleMsg", d.ok, d.message);
     if (d.ok) { $("cleIn").value = ""; R.cle = d.cle; $("cleEtat").innerHTML = etatCle(d.cle); refresh(); }
   };
   const del = $("bDelCle");
-  if (del) del.onclick = async () => { if (!confirm("Supprimer la clé du coffre Windows ?")) return; const d = await J("/reglages/cle", "DELETE"); R.cle = d.cle; reglages(); };
+  if (del) del.onclick = async () => { if (!confirm(tr("Supprimer la clé du coffre Windows ?", "Delete the key from Windows Credential Manager?"))) return; const d = await J("/reglages/cle", "DELETE"); R.cle = d.cle; reglages(); };
 }
 function lierOsc() {
   $("bTestOsc").onclick = async () => { const d = await J("/reglages/tester-osc", "POST", { hote: $("oscH").value, port: $("oscP").value }); say("oscMsg", d.ok, d.message); };
@@ -320,40 +358,51 @@ const sauver = (extra = {}) => J("/reglages", "POST", { reglages: { osc_hote: $(
 async function reglages() {
   R = await J("/reglages"); const r = R.reglages;
   const opts = Object.entries(R.modeles).map(([k, n]) => `<option value="${k}"${k === r.modele_defaut ? " selected" : ""}>${esc(n)}</option>`).join("");
-  ouvrir(`<h2>⚙ Réglages</h2><div class="hint">Enregistrés dans <code>${esc(R.fichier)}</code></div>
-  <h4>Intelligence artificielle</h4>${blocCle()}
-  <label>Modèle par défaut</label><select id="mod">${opts}</select>
-  <label>Tours d'outils maximum par demande</label><input id="tours" type="number" min="1" max="100" value="${r.max_tours_outils}">
-  <h4>Console grandMA3</h4>${blocOsc()}
-  <label>Dossier gma3_library</label><input id="bib" value="${esc(r.dossier_bibliotheque)}">
-  <div class="acts2"><button class="btn" id="bPlug">Vérifier le plugin AI_Index</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>
-  <h4>Apparence et données</h4>
-  <label>Thème</label><select id="thm"><option value="sombre"${r.theme === "sombre" ? " selected" : ""}>Sombre</option><option value="clair"${r.theme === "clair" ? " selected" : ""}>Clair</option></select>
-  <div class="acts2"><button class="btn" id="bHist">🗑 Effacer l'historique du chat</button><button class="btn" id="bWiz">🧭 Relancer l'assistant</button></div><div class="msg" id="gMsg"></div>
-  <div class="foot"><span></span><div class="acts2" style="margin:0"><button class="btn" id="bClose">Fermer</button><button class="btn pri" style="padding:8px 22px" id="bSave">Enregistrer</button></div></div>`);
+  ouvrir(`<h2>${tr("⚙ Réglages", "⚙ Settings")}</h2><div class="hint">${tr("Enregistrés dans", "Saved in")} <code>${esc(R.fichier)}</code></div>
+  <h4>${tr("Intelligence artificielle", "Artificial intelligence")}</h4>${blocCle()}
+  <label>${tr("Modèle par défaut", "Default model")}</label><select id="mod">${opts}</select>
+  <label>${tr("Tours d'outils maximum par demande", "Maximum tool rounds per request")}</label><input id="tours" type="number" min="1" max="100" value="${r.max_tours_outils}">
+  <label>${tr("Plafond de dépense par session, en $ (0 = aucun plafond)", "Spending limit per session, in $ (0 = no limit)")}</label><input id="plaf" type="number" min="0" max="1000" step="0.5" value="${r.plafond_session_usd}">
+  <div class="hint">${tr(`Dépensé depuis le lancement : ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Alerte à 80 %, nouvelles demandes bloquées au plafond.`, `Spent since launch: ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Warning at 80%, new requests blocked at the limit.`)}</div>
+  <div class="acts2"><button class="btn" id="bRaz">${tr("Remettre le compteur à zéro", "Reset the counter")}</button></div><div class="msg" id="cMsg"></div>
+  <h4>${tr("Console grandMA3", "grandMA3 console")}</h4>${blocOsc()}
+  <label>${tr("Dossier gma3_library", "gma3_library folder")}</label><input id="bib" value="${esc(r.dossier_bibliotheque)}">
+  <div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier le plugin AI_Index", "Check the AI_Index plugin")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>
+  <h4>${tr("Apparence et données", "Appearance and data")}</h4>
+  ${blocLangue(r.langue)}
+  <label>${tr("Thème", "Theme")}</label><select id="thm"><option value="sombre"${r.theme === "sombre" ? " selected" : ""}>${tr("Sombre", "Dark")}</option><option value="clair"${r.theme === "clair" ? " selected" : ""}>${tr("Clair", "Light")}</option></select>
+  <div class="acts2"><button class="btn" id="bHist">${tr("🗑 Effacer l'historique du chat", "🗑 Clear chat history")}</button><button class="btn" id="bWiz">${tr("🧭 Relancer l'assistant", "🧭 Restart the setup wizard")}</button></div><div class="msg" id="gMsg"></div>
+  <div class="foot"><span></span><div class="acts2" style="margin:0"><button class="btn" id="bClose">${tr("Fermer", "Close")}</button><button class="btn pri" style="padding:8px 22px" id="bSave">${tr("Enregistrer", "Save")}</button></div></div>`);
   lierCle(); lierOsc();
   lierPlugin();
-  $("bHist").onclick = async () => { if (!confirm("Effacer tout l'historique du chat ?")) return; await fetch(API + "/history", { method: "DELETE" }); hist = []; $("msgs").innerHTML = ""; welcome(); say("gMsg", true, "Historique effacé."); };
+  $("bHist").onclick = async () => { if (!confirm(tr("Effacer tout l'historique du chat ?", "Clear the whole chat history?"))) return; await fetch(API + "/history", { method: "DELETE" }); hist = []; $("msgs").innerHTML = ""; welcome(); say("gMsg", true, tr("Historique effacé.", "History cleared.")); };
   $("bWiz").onclick = assistant; $("bClose").onclick = fermer;
+  $("bRaz").onclick = async () => { majCout(await J("/session/reinitialiser", "POST")); say("cMsg", true, tr("Compteur remis à zéro.", "Counter reset.")); };
   $("bSave").onclick = async () => {
-    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, dossier_bibliotheque: $("bib").value, theme: $("thm").value });
+    const avant = r.langue;
+    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
     if (!d.ok) return say("gMsg", false, Object.values(d.erreurs).join(" "));
+    if (d.reglages.langue !== avant) return location.reload();   // nouvelle langue : on recharge toute l'interface
     applyTheme(d.reglages.theme); $("modele").value = d.reglages.modele_defaut;
     try { localStorage.setItem("modele", d.reglages.modele_defaut); } catch (e) {}
-    say("gMsg", true, "Réglages enregistrés."); refresh();
+    say("gMsg", true, tr("Réglages enregistrés.", "Settings saved.")); refresh();
   };
 }
 async function assistant() {
   R = await J("/reglages"); let n = 0;
-  const T = ["Clé API", "Console", "Plugin d'index"];
+  const ETAPES = [tr("Clé API", "API key"), tr("Console", "Console"), tr("Plugin d'index", "Index plugin")];
   const rendre = () => {
     const corps = [
-      `<div class="hint">Bienvenue ! Cette application pilote ta console grandMA3 avec une IA. Commençons par ta clé API Anthropic (à créer sur console.anthropic.com).</div>` + blocCle(),
-      `<div class="hint">Indique où se trouve ta console. Si grandMA3 onPC tourne sur ce PC, garde les valeurs par défaut.</div>` + blocOsc(),
-      `<div class="hint">Le plugin <code>AI_Index</code> permet à l'IA de lire ton showfile.</div><label>Dossier gma3_library</label><input id="bib" value="${esc(R.reglages.dossier_bibliotheque)}"><div class="acts2"><button class="btn" id="bPlug">Vérifier</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>`][n];
-    ouvrir(`<h2>🧭 Premier lancement — ${T[n]}</h2><div class="steps">Étape ${n + 1} sur 3</div>${corps}
-    <div class="foot"><button class="btn" id="bSkip">${n ? "← Retour" : "Passer"}</button><button class="btn pri" style="padding:8px 22px" id="bNext">${n < 2 ? "Suivant →" : "Terminer"}</button></div>`);
-    if (n === 0) lierCle();
+      blocLangue(R.reglages.langue) + `<div class="hint">${tr("Bienvenue ! Cette application pilote ta console grandMA3 avec une IA. Commençons par ta clé API Anthropic (à créer sur console.anthropic.com).", "Welcome! This application controls your grandMA3 console with AI. Let's start with your Anthropic API key (create one at console.anthropic.com).")}</div>` + blocCle(),
+      `<div class="hint">${tr("Indique où se trouve ta console. Si grandMA3 onPC tourne sur ce PC, garde les valeurs par défaut.", "Tell the app where your console is. If grandMA3 onPC runs on this PC, keep the default values.")}</div>` + blocOsc(),
+      `<div class="hint">${tr("Le plugin <code>AI_Index</code> permet à l'IA de lire ton showfile.", "The <code>AI_Index</code> plugin lets the AI read your showfile.")}</div><label>${tr("Dossier gma3_library", "gma3_library folder")}</label><input id="bib" value="${esc(R.reglages.dossier_bibliotheque)}"><div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier", "Check")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>`][n];
+    ouvrir(`<h2>${tr("🧭 Premier lancement", "🧭 First launch")} — ${ETAPES[n]}</h2><div class="steps">${tr(`Étape ${n + 1} sur 3`, `Step ${n + 1} of 3`)}</div>${corps}
+    <div class="foot"><button class="btn" id="bSkip">${n ? tr("← Retour", "← Back") : tr("Passer", "Skip")}</button><button class="btn pri" style="padding:8px 22px" id="bNext">${n < 2 ? tr("Suivant →", "Next →") : tr("Terminer", "Finish")}</button></div>`);
+    if (n === 0) {
+      lierCle();
+      // Changer la langue ici l'enregistre et réaffiche l'assistant dans la nouvelle langue.
+      $("lng").onchange = async () => { const d = await J("/reglages", "POST", { reglages: { langue: $("lng").value } }); if (d.ok) { R = await J("/reglages"); LANG = R.langue; textesFixes(); rendre(); } };
+    }
     if (n === 1) lierOsc();
     if (n === 2) lierPlugin();
     $("bSkip").onclick = () => n ? (n--, rendre()) : (J("/reglages", "POST", { reglages: { premier_lancement_fait: true } }), fermer());
@@ -365,20 +414,46 @@ async function assistant() {
   };
   rendre();
 }
+function blocLangue(choix) {
+  const o = (v, t) => `<option value="${v}"${choix === v ? " selected" : ""}>${t}</option>`;
+  return `<label>${tr("Langue / Language", "Language / Langue")}</label><select id="lng">${o("auto", tr("Automatique (langue de Windows)", "Automatic (Windows language)"))}${o("fr", "Français")}${o("en", "English")}</select>`;
+}
+// Textes écrits en dur dans le HTML : réécrits dans la langue choisie.
+function textesFixes() {
+  document.documentElement.lang = LANG;
+  $("modele").title = tr("Modèle de l'IA", "AI model");
+  $("modele").options[0].textContent = tr("Haiku 5.5 · économique", "Haiku 5.5 · economical");
+  $("modele").options[1].textContent = tr("Sonnet 5.5 · plus puissant", "Sonnet 5.5 · more powerful");
+  $("cout").title = tr("Coût estimé depuis le lancement de l'app, et plafond (⚙ Réglages)", "Estimated cost since the app was launched, and limit (⚙ Settings)");
+  $("bNew").textContent = tr("🗑 Nouveau chat", "🗑 New chat");
+  $("bNew").title = tr("Nouvelle conversation (efface le chat et la mémoire de l'IA)", "New conversation (clears the chat and the AI's memory)");
+  $("bLogs").textContent = "📋 Actions";
+  $("bJournal").textContent = tr("📜 Journal", "📜 Log");
+  $("bJournal").title = tr("Tout ce qui a été envoyé à la console, avec l'heure", "Everything sent to the console, with the time");
+  $("bSet").textContent = tr("⚙ Réglages", "⚙ Settings");
+  $("inp").placeholder = tr("Écris ta demande…  (Entrée = envoyer, Maj+Entrée = nouvelle ligne)", "Type your request…  (Enter = send, Shift+Enter = new line)");
+  $("send").textContent = tr("Envoyer", "Send");
+  document.querySelector("#logs h3").textContent = tr("Actions exécutées", "Executed actions");
+  const vide = document.querySelector("#acts p.mu"); if (vide) vide.textContent = tr("Rien pour l'instant.", "Nothing yet.");
+  if (session) majCout();
+}
 $("bSet").onclick = reglages;
 $("ov").addEventListener("mousedown", e => { if (e.target === $("ov")) fermer(); });
 
 (async () => {
+  try { R = await J("/reglages"); LANG = R.langue === "en" ? "en" : "fr"; } catch (e) {}
+  textesFixes();
   try {
     const d = await (await fetch(API + "/history")).json();
     hist = d.messages || [];
     hist.forEach(m => { if (typeof m.content === "string") addMsg(m.role, m.content); });
   } catch (e) {}
   if (!hist.length) welcome();
-  majCout();
+  try { localStorage.removeItem("coutSession"); } catch (e) {}   // ancien compteur, remplacé par celui du serveur
   refresh();
   try {
-    R = await J("/reglages"); applyTheme(R.reglages.theme);
+    if (!R) R = await J("/reglages");
+    applyTheme(R.reglages.theme);
     if (!localStorage.getItem("modele")) $("modele").value = R.reglages.modele_defaut;
     if (!R.reglages.premier_lancement_fait) assistant();
   } catch (e) {}

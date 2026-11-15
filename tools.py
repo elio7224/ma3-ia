@@ -8,6 +8,7 @@ import operator
 import xml.etree.ElementTree as ET
 from itertools import product
 from ma3 import MA3
+from i18n import tr
 
 ma3 = MA3()
 
@@ -92,7 +93,7 @@ def _lancer_plugin_index():
         if os.path.exists(fichier):
             os.remove(fichier)
     except OSError as e:
-        return f"Impossible de supprimer l'ancien index ({e})."
+        return tr(f"Impossible de supprimer l'ancien index ({e}).", f"Cannot delete the old index ({e}).")
 
     chemin_lua = fichier.replace("\\", "/")
     ma3.send(f'Plugin "{PLUGIN_NOM}" "{chemin_lua}"')
@@ -107,7 +108,7 @@ def _lancer_plugin_index():
             except (ValueError, OSError):
                 pass            
         time.sleep(0.25)
-    return f"Le plugin '{PLUGIN_NOM}' n'a pas produit {fichier} en {DELAI_MAX_PLUGIN} s."
+    return tr(f"Le plugin '{PLUGIN_NOM}' n'a pas produit {fichier} en {DELAI_MAX_PLUGIN} s.", f"The '{PLUGIN_NOM}' plugin did not produce {fichier} within {DELAI_MAX_PLUGIN} s.")
 
 
 def preparer_et_exporter_show() -> str:
@@ -133,7 +134,7 @@ def preparer_et_exporter_show() -> str:
     if erreur:
         print("⚠️ " + erreur)
         return erreur
-    return "Index régénéré par le plugin, cache Temp vidé."
+    return tr("Index régénéré par le plugin, cache Temp vidé.", "Index rebuilt by the plugin, Temp cache cleared.")
 
 
 def _cle_tri(numero: str):

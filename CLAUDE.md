@@ -46,6 +46,8 @@ réponds, commente et nomme en **français**, explications courtes et simples.
 - Noms en français (`lire_xml_temp`, `INDEX_OBJETS`). Lire l'index via `tools.INDEX_OBJETS` (réassigné au rescan).
 - Un outil = fonction dans `tools.py` + entrée dans `outils.py`. Retourne toujours une **chaîne** ; erreurs → `"Erreur : ..."`.
 - Actions de masse : `dry_run` + limite (`MAX_MACROS_PAR_APPEL`).
+- Interface bilingue : tout texte montré à l'utilisateur passe par `tr("français", "english")` (JS dans `index.html`,
+  Python via `i18n.py`). Les textes destinés à l'IA (résultats d'outils, prompt) restent en français.
 - Console Windows en cp1252 : stdout est reconfiguré en UTF-8 dans `app.py` (emojis dans les `print`).
 
 ## Sécurité
