@@ -63,5 +63,7 @@ réponds, commente et nomme en **français**, explications courtes et simples.
 - Un problème ou une idée remonté en utilisant l'app → une **issue** GitHub (`gh issue create`, en français, courte).
 - Une correction = une **branche** `fix/<sujet>` ou `feat/<sujet>` liée à l'issue → tests → le développeur essaie l'app
   → s'il valide : fusion dans `main`, push, issue fermée (`Fixes #N` dans le commit). Sinon on supprime la branche.
+- Après chaque changement poussé sur `main` qui modifie ce que fait l'app : mettre à jour la **description GitHub**
+  du dépôt (`gh repo edit elio7224/ma3-ia --description "..."`, 350 caractères max) et, si besoin, les topics et le README.
 - `gh` est installé dans `C:\Program Files\GitHub CLI\gh.exe` (pas toujours dans le PATH du shell).
 - Petites étapes ; plan avant un changement multi-fichiers. Push seulement avec l'accord du développeur.

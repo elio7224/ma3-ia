@@ -3,7 +3,8 @@
 Assistant IA (Claude, API Anthropic) qui pilote une console **grandMA3 onPC** sous Windows :
 il lit ton showfile (index + exports XML) et envoie des commandes à la console par **OSC**.
 
-> Projet indépendant, non affilié à MA Lighting. grandMA3 est une marque de MA Lighting Technology GmbH.
+> ⚠️ **Projet indépendant, non affilié à MA Lighting Technology GmbH**, ni approuvé ou soutenu par elle.
+> Voir [Mentions](#mentions).
 
 ## Ce qu'il sait faire
 - Répondre à des questions sur ton show (macros, séquences, presets, groupes, MAtricks, apparences).
@@ -26,3 +27,15 @@ Détails (données, création du `.exe`, tests) : voir [README_BUREAU.md](README
 - La clé API est rangée dans le coffre Windows (Credential Manager), jamais dans un fichier du projet.
 - OSC est à sens unique : l'IA envoie les commandes mais ne peut pas confirmer qu'elles ont réussi.
   Teste d'abord sur une copie de ton show.
+
+## Licence
+Code sous licence [MIT](LICENSE) : libre d'utilisation, de modification et de redistribution, en gardant la mention de copyright.
+
+## Mentions
+- Ce projet est **indépendant** : il n'est ni affilié à **MA Lighting Technology GmbH**, ni approuvé, sponsorisé ou soutenu par elle.
+- « grandMA3 » et « MA Lighting » sont des marques de MA Lighting Technology GmbH, citées uniquement pour indiquer
+  avec quel matériel l'application fonctionne.
+- Le manuel grandMA3 n'est pas inclus : l'outil `doc_grandma3` télécharge à la demande les pages publiques
+  de help.malighting.com, pour un usage local.
+- L'application est fournie sans garantie (voir la licence). Teste toujours sur une copie de ton show avant un spectacle.
+
