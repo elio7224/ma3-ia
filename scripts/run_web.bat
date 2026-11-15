@@ -5,8 +5,8 @@ echo ========================================================
 echo   LANCEMENT DE L'AGENT GRANDMA3
 echo ========================================================
 
-:: Se placer dans le dossier du projet
-cd /d "%~dp0"
+:: Se placer à la racine du projet
+cd /d "%~dp0.."
 
 :: Vérifier si le venv existe, sinon le créer
 if not exist "venv" (
@@ -26,10 +26,10 @@ if exist "requirements.txt" (
     pip install fastapi uvicorn pydantic requests anthropic python-osc
 )
 
-:: Lancer app.py (le vrai nom de ton fichier)
+:: Lancer le serveur web (ma3ia\app.py)
 echo ========================================================
 echo   TOUT EST PRÊT ! LANCEMENT DU SERVEUR...
 echo ========================================================
-python app.py
+python ma3ia\app.py
 
 pause

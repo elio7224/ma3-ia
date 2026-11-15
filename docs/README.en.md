@@ -1,6 +1,6 @@
 # MA3-IA — grandMA3 AI Control
 
-🇫🇷 [Version française](README.md)
+🇫🇷 [Version française](../README.md)
 
 An AI assistant (Claude, Anthropic API) that drives a **grandMA3 onPC** console on Windows:
 it reads your showfile (index + XML exports) and sends commands to the console over **OSC**.
@@ -16,9 +16,9 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 ## Screenshots
 *Taken with a fictional demo show.*
 
-![The chat: the AI reads a sequence, then creates a macro](docs/captures/chat_en.png)
+![The chat: the AI reads a sequence, then creates a macro](captures/chat_en.png)
 
-![The command log: every command sent to the console, with the time and the AI tool](docs/captures/journal_en.png)
+![The command log: every command sent to the console, with the time and the AI tool](captures/journal_en.png)
 
 ## What it can do
 - Answer questions about your show (macros, sequences, presets, groups, MAtricks, appearances).
@@ -35,7 +35,7 @@ The AI answers in the language you write in.
 ## Requirements
 - Windows 10/11 (64-bit), grandMA3 onPC. Python 3.12 only for the "from source" version.
 - An Anthropic API key (https://console.anthropic.com).
-- On the console: incoming OSC enabled (UDP, address `/cmd`) and the `ai_index.lua` Lua plugin imported.
+- On the console: incoming OSC enabled (UDP, address `/cmd`) and the `plugin/ai_index.lua` Lua plugin imported.
 
 ## Installation
 **Easiest: the installer** (no Python needed)
@@ -48,7 +48,7 @@ The AI answers in the language you write in.
 > To verify the file: it is built by GitHub Actions straight from this source code (*Actions* tab),
 > and its SHA-256 checksum is published with the Release (`Get-FileHash .\MA3-IA-Setup-x.y.z.exe`).
 
-**From source**: download the project, then double-click `run.bat` (creates the Python environment,
+**From source**: download the project, then double-click `scripts\run.bat` (creates the Python environment,
 installs everything, creates an `MA3-IA` shortcut on the Desktop).
 
 More details (data locations, building the `.exe`, tests): see [README_BUREAU.md](README_BUREAU.md) (in French).
@@ -65,7 +65,7 @@ More details (data locations, building the `.exe`, tests): see [README_BUREAU.md
   never in the project folder.
 
 ## License
-Code released under the [MIT](LICENSE) license: free to use, modify and redistribute, as long as the copyright notice is kept.
+Code released under the [MIT](../LICENSE) license: free to use, modify and redistribute, as long as the copyright notice is kept.
 
 ## Notices
 - This project is **independent**: it is not affiliated with, endorsed, sponsored or supported by **MA Lighting Technology GmbH**.

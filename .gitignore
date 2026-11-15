@@ -12,3 +12,7 @@ dist/
 
 # Manuel grandMA3 téléchargé (propriété de MA Lighting : ne pas publier)
 docs/ma3/manuel/
+
+# Usage perso de Claude Code (gardé en local, pas dans le dépôt)
+CLAUDE.md
+.claude/

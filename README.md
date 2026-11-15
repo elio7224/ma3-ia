@@ -1,6 +1,6 @@
 # MA3-IA — grandMA3 AI Control
 
-🇬🇧 [English version](README.en.md)
+🇬🇧 [English version](docs/README.en.md)
 
 Assistant IA (Claude, API Anthropic) qui pilote une console **grandMA3 onPC** sous Windows :
 il lit ton showfile (index + exports XML) et envoie des commandes à la console par **OSC**.
@@ -33,7 +33,7 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 ## Prérequis
 - Windows 10/11 (64 bits), grandMA3 onPC. Python 3.12 seulement pour la version « code source ».
 - Une clé API Anthropic (https://console.anthropic.com).
-- Dans la console : OSC entrant activé (UDP, adresse `/cmd`) et le plugin Lua `ai_index.lua` importé.
+- Dans la console : OSC entrant activé (UDP, adresse `/cmd`) et le plugin Lua `plugin/ai_index.lua` importé.
 
 ## Installation
 **Le plus simple : l'installateur** (aucun Python à installer)
@@ -46,10 +46,10 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 > Pour vérifier le fichier : il est construit par GitHub Actions directement depuis ce code (onglet *Actions*),
 > et son empreinte SHA-256 est publiée avec la Release (`Get-FileHash .\MA3-IA-Setup-x.y.z.exe`).
 
-**Depuis le code source** : télécharge le projet puis double-clique sur `run.bat` (crée l'environnement Python,
+**Depuis le code source** : télécharge le projet puis double-clique sur `scripts\run.bat` (crée l'environnement Python,
 installe tout, crée un raccourci `MA3-IA` sur le Bureau).
 
-Détails (données, création du `.exe`, tests) : voir [README_BUREAU.md](README_BUREAU.md).
+Détails (données, création du `.exe`, tests) : voir [docs/README_BUREAU.md](docs/README_BUREAU.md).
 
 ## Sécurité
 - La clé API est rangée dans le coffre Windows (Credential Manager), jamais dans un fichier du projet.

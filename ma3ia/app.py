@@ -117,7 +117,7 @@ def conserver_memoire_texte(messages_raw):
 
 @app.get("/")
 def read_index():
-    page = os.path.join(reglages.dossier_ressources(), "index.html")
+    page = os.path.join(reglages.dossier_ressources(), "web", "index.html")
     if os.path.exists(page):
         return FileResponse(page)
     else:
