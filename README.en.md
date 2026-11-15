@@ -13,6 +13,13 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 > drive the console on its own mid-performance. The AI can be wrong, and OSC does not confirm that a command
 > succeeded. During a live show, the lighting operator always stays in control.
 
+## Screenshots
+*Taken with a fictional demo show.*
+
+![The chat: the AI reads a sequence, then creates a macro](docs/captures/chat_en.png)
+
+![The command log: every command sent to the console, with the time and the AI tool](docs/captures/journal_en.png)
+
 ## What it can do
 - Answer questions about your show (macros, sequences, presets, groups, MAtricks, appearances).
 - Create and edit objects: macros (including in bulk), MAtricks, effect grids, free commands.

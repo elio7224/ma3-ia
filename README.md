@@ -13,6 +13,13 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 > jamais piloter la console seul en plein spectacle. Les réponses de l'IA peuvent être fausses, et OSC ne confirme
 > pas qu'une commande a réussi. En live, c'est toujours l'éclairagiste qui garde la main.
 
+## Aperçu
+*Captures réalisées avec un show de démonstration fictif.*
+
+![Le chat : l'IA lit une séquence puis crée une macro](docs/captures/chat_fr.png)
+
+![Le journal : chaque commande envoyée à la console, avec l'heure et l'outil de l'IA](docs/captures/journal_fr.png)
+
 ## Ce qu'il sait faire
 - Répondre à des questions sur ton show (macros, séquences, presets, groupes, MAtricks, apparences).
 - Créer et modifier des objets : macros (y compris en masse), MAtricks, grilles d'effets, commandes libres.
