@@ -15,7 +15,8 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;fl
 .brand b{background:linear-gradient(90deg,#fff,var(--ac3));-webkit-background-clip:text;background-clip:text;color:transparent}
 .badge{background:var(--yl);color:#000;font-weight:800;font-size:.66rem;padding:2px 7px;border-radius:5px}
 .hr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.chip{display:flex;align-items:center;gap:8px;font-size:.78rem;background:var(--bg3);border:1px solid var(--bd);padding:6px 13px;border-radius:20px;color:var(--mu);transition:.2s}
+#st{max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.chip{display:flex;align-items:center;gap:8px;font-size:.78rem;white-space:nowrap;background:var(--bg3);border:1px solid var(--bd);padding:6px 13px;border-radius:20px;color:var(--mu);transition:.2s}
 .chip.tot{color:var(--tx);font-variant-numeric:tabular-nums}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--mu);flex:none}.dot.ok{background:var(--ok);box-shadow:0 0 9px var(--ok)}.dot.warn{background:var(--yl);box-shadow:0 0 9px var(--yl)}.dot.bad{background:var(--bad);box-shadow:0 0 9px var(--bad)}
 .btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bd);padding:7px 13px;border-radius:10px;font-size:.8rem;font-weight:600;cursor:pointer;transition:.15s}
@@ -211,7 +212,10 @@ async function refresh() {
     const d = await (await fetch(API + "/status")).json();
     const noms = LANG === "en" ? {} : { groups: "groupes", sequences: "séquences" };
     const parts = Object.entries(d.counts || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${noms[k] || k}`);
-    $("st").textContent = parts.length ? tr("Index : ", "Index: ") + parts.join(" · ") : tr("Index vide : plugin AI_Index ? (puis Rescan)", "Empty index: AI_Index plugin? (then Rescan)");
+    // En-tête court (total) ; le détail par type s'affiche au survol.
+    const total = Object.values(d.counts || {}).reduce((a, n) => a + n, 0);
+    $("st").textContent = parts.length ? tr(`Index : ${nb(total)} objets`, `Index: ${nb(total)} objects`) : tr("Index vide : plugin AI_Index ? (puis Rescan)", "Empty index: AI_Index plugin? (then Rescan)");
+    $("st").parentElement.title = parts.length ? parts.join("\n") : "";
     $("dot").className = "dot " + (parts.length ? "ok" : "warn");
     if (d.session) majCout(d.session);
   } catch (e) { $("st").textContent = tr("Serveur injoignable", "Server unreachable"); $("dot").className = "dot bad"; }
