@@ -1,0 +1,6 @@
+"""Version de l'application (utilisée par l'installateur, la fiche « Propriétés » de l'exe et les Releases GitHub)."""
+VERSION = "1.0.0"
+NOM = "MA3-IA"
+EDITEUR = "elio7224"
+DESCRIPTION = "grandMA3 AI Control"
+URL = "https://github.com/elio7224/ma3-ia"
