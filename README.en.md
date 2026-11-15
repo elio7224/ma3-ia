@@ -8,6 +8,11 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 > ⚠️ **Independent project, not affiliated with MA Lighting Technology GmbH**, nor endorsed or supported by it.
 > See [Notices](#notices).
 
+> 🎭 **A preparation tool, not a show operator.** MA3-IA helps you build and understand your show
+> (programming, macros, searching, explanations). It **does not replace a human during a live show**: never let it
+> drive the console on its own mid-performance. The AI can be wrong, and OSC does not confirm that a command
+> succeeded. During a live show, the lighting operator always stays in control.
+
 ## What it can do
 - Answer questions about your show (macros, sequences, presets, groups, MAtricks, appearances).
 - Create and edit objects: macros (including in bulk), MAtricks, effect grids, free commands.
@@ -43,6 +48,8 @@ More details (data locations, building the `.exe`, tests): see [README_BUREAU.md
 - The API key is stored in Windows Credential Manager, never in a project file.
 - OSC is one-way: the AI sends commands but cannot confirm they succeeded.
   Always test on a copy of your show first.
+- No AI at the controls during a show: use MA3-IA for preparation, rehearsals or with no audience,
+  and always check the result on the console before going live.
 - Your chat history, settings and command log stay on your PC (the app's configuration folder),
   never in the project folder.
 

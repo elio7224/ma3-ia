@@ -8,6 +8,11 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 > ⚠️ **Projet indépendant, non affilié à MA Lighting Technology GmbH**, ni approuvé ou soutenu par elle.
 > Voir [Mentions](#mentions).
 
+> 🎭 **Un outil de préparation, pas un opérateur de spectacle.** MA3-IA t'aide à construire et à comprendre ton show
+> (programmation, macros, recherche, explications). Il **ne remplace pas un humain pendant un live** : ne le laisse
+> jamais piloter la console seul en plein spectacle. Les réponses de l'IA peuvent être fausses, et OSC ne confirme
+> pas qu'une commande a réussi. En live, c'est toujours l'éclairagiste qui garde la main.
+
 ## Ce qu'il sait faire
 - Répondre à des questions sur ton show (macros, séquences, presets, groupes, MAtricks, apparences).
 - Créer et modifier des objets : macros (y compris en masse), MAtricks, grilles d'effets, commandes libres.
@@ -41,6 +46,8 @@ Détails (données, création du `.exe`, tests) : voir [README_BUREAU.md](README
 - La clé API est rangée dans le coffre Windows (Credential Manager), jamais dans un fichier du projet.
 - OSC est à sens unique : l'IA envoie les commandes mais ne peut pas confirmer qu'elles ont réussi.
   Teste d'abord sur une copie de ton show.
+- Pas d'IA aux commandes pendant un spectacle : utilise MA3-IA en préparation, en répétition ou hors public,
+  et vérifie toujours le résultat sur la console avant de jouer.
 - Ton historique de chat, tes réglages et le journal restent sur ton PC (dossier de configuration de l'app),
   jamais dans le dossier du projet.
 
