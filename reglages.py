@@ -26,6 +26,7 @@ DEFAUTS = {
     "dossier_bibliotheque": BIBLIOTHEQUE_DEFAUT,
     "theme": "sombre",
     "max_tours_outils": MAX_TOURS_OUTILS,
+    "plafond_session_usd": 1.0,     # 0 = pas de plafond
     "premier_lancement_fait": False,
 }
 THEMES = ("sombre", "clair")
@@ -77,6 +78,12 @@ def _valider(cle: str, valeur):
         except (TypeError, ValueError):
             return None, "Le nombre de tours doit être un entier."
         return (n, None) if 1 <= n <= 100 else (None, "Le nombre de tours doit être entre 1 et 100.")
+    if cle == "plafond_session_usd":
+        try:
+            v = round(float(str(valeur).replace(",", ".").replace("$", "").strip()), 2)
+        except (TypeError, ValueError):
+            return None, "Le plafond doit être un montant en dollars (ex : 1,50)."
+        return (v, None) if 0 <= v <= 1000 else (None, "Le plafond doit être entre 0 et 1000 $ (0 = aucun plafond).")
     if cle == "premier_lancement_fait":
         return bool(valeur), None
     return None, f"Réglage inconnu : {cle}."
@@ -261,7 +268,11 @@ def tester_osc(hote: str, port):
         return False, f"Adresse introuvable : {hote_v}."
     try:
         from pythonosc.udp_client import SimpleUDPClient
-        SimpleUDPClient(hote_v, port_v).send_message("/cmd", "Echo 'ma3-ia : test de connexion'")
+        import journal
+        commande = "Echo 'ma3-ia : test de connexion'"
+        SimpleUDPClient(hote_v, port_v).send_message("/cmd", commande)
+        with journal.source("Test de connexion"):
+            journal.noter(commande, f"{hote_v}:{port_v}")
     except Exception as e:
         return False, f"Envoi impossible : {type(e).__name__} : {e}"
     return True, (f"Message envoyé à {hote_v}:{port_v} (UDP). La console ne répond pas en OSC : "

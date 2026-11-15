@@ -79,10 +79,11 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
   <div class="hr">
     <span class="chip"><i id="dot" class="dot"></i><span id="st">Connexion…</span></span>
     <select id="modele" class="btn" title="Modèle de l'IA"><option value="haiku">Haiku 5.5 · économique</option><option value="sonnet">Sonnet 5.5 · plus puissant</option></select>
-    <span class="chip tot" id="cout" title="Estimation du coût de la session">Session : ≈ 0,000 $</span>
+    <span class="chip tot" id="cout" title="Coût estimé depuis le lancement de l'app, et plafond (⚙ Réglages)">Session : ≈ 0,000 $</span>
     <button id="bRescan" class="btn">🔄 Rescan</button>
     <button id="bNew" class="btn">🗑 Nouvelle conversation</button>
     <button id="bLogs" class="btn">📋 Actions</button>
+    <button id="bJournal" class="btn" title="Tout ce qui a été envoyé à la console, avec l'heure">📜 Journal</button>
     <button id="bSet" class="btn">⚙ Réglages</button>
   </div>
 </header>
@@ -168,14 +169,23 @@ function addAct(a) {
     (Object.keys(a.input || {}).length ? `<pre>${esc(JSON.stringify(a.input, null, 2))}</pre>` : "") + `<pre>${esc(res)}</pre>`;
   box.appendChild(d); box.scrollTop = box.scrollHeight;
 }
-let totalCout = 0;
-try { totalCout = parseFloat(localStorage.getItem("coutSession")) || 0; } catch (e) {}
+let session = null, alerteVue = false;
 const fr = n => (n || 0).toLocaleString("fr-FR");
-const majCout = () => { $("cout").textContent = "Session : ≈ " + totalCout.toFixed(3).replace(".", ",") + " $"; };
+const usd = (n, d = 2) => (n || 0).toFixed(d).replace(".", ",");
+// Coût de la session (calculé par le serveur depuis le lancement) + alerte à 80 % du plafond.
+function majCout(s) {
+  if (s) session = s;
+  if (!session) return;
+  const c = $("cout");
+  c.textContent = "Session : ≈ " + usd(session.cout_usd, 3) + " $" + (session.plafond_usd > 0 ? " / " + usd(session.plafond_usd) + " $" : "");
+  c.style.color = session.atteint ? "var(--bad)" : session.alerte ? "var(--yl)" : "";
+  if (session.alerte && !session.atteint && !alerteVue) {
+    alerteVue = true;
+    addMsg("assistant", `⚠️ **Attention : ${usd(session.cout_usd)} $ dépensés sur ${usd(session.plafond_usd)} $ de plafond pour cette session.** Les demandes seront bloquées au plafond (modifiable dans ⚙ Réglages).`);
+  }
+  if (!session.alerte) alerteVue = false;
+}
 function addCout(u) {
-  totalCout += u.cout_usd || 0;
-  try { localStorage.setItem("coutSession", totalCout); } catch (e) {}
-  majCout();
   const entree = (u.input || 0) + (u.cache_read || 0) + (u.cache_write || 0);
   const d = document.createElement("div"); d.className = "cost";
   d.textContent = `${u.modele} · ${fr(entree)} tokens en entrée (dont ${fr(u.cache_read)} en cache) · ${fr(u.output)} en sortie · ≈ ${(u.cout_usd || 0).toFixed(4).replace(".", ",")} $`;
@@ -196,6 +206,7 @@ async function refresh() {
     const parts = Object.entries(d.counts || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${noms[k] || k}`);
     $("st").textContent = parts.length ? "Index : " + parts.join(" · ") : "Index vide : plugin AI_Index ? (puis Rescan)";
     $("dot").className = "dot " + (parts.length ? "ok" : "warn");
+    if (d.session) majCout(d.session);
   } catch (e) { $("st").textContent = "Serveur injoignable"; $("dot").className = "dot bad"; }
 }
 async function send(txt) {
@@ -211,6 +222,7 @@ async function send(txt) {
     if (d.messages) hist = d.messages;
     addMsg("assistant", d.response || "(réponse vide)");
     if (d.usage) addCout(d.usage);
+    if (d.session) majCout(d.session);
     if (d.actions && d.actions.length) d.actions.forEach(addAct);
     else (d.logs || []).forEach(l => addAct({ name: "log", input: {}, result: l, error: l.startsWith("⚠️") }));
     refresh();
@@ -226,6 +238,19 @@ $("send").onclick = () => send();
 $("inp").addEventListener("input", fit);
 $("inp").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
 $("bLogs").onclick = () => $("logs").classList.toggle("hide");
+const dateFr = iso => { const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }); };
+async function journalOuvrir() {
+  let d;
+  try { d = await J("/journal?limite=500"); } catch (e) { d = { entrees: [], fichier: "?" }; }
+  const lignes = d.entrees.map(e => `<tr><td style="white-space:nowrap">${esc(dateFr(e.heure))}</td><td style="white-space:nowrap">${esc(e.source)}</td><td><code>${esc(e.commande)}</code></td></tr>`).join("");
+  ouvrir(`<h2>📜 Journal des commandes</h2>
+  <div class="hint">Tout ce qui a été envoyé à la console, le plus récent en haut (${d.entrees.length} affichées, 500 max). OSC est à sens unique : « envoyé » ne veut pas dire « exécuté ».<br>Fichier : <code>${esc(d.fichier)}</code></div>
+  <div class="tw" style="max-height:55vh;overflow:auto;margin-top:10px">${lignes ? `<table><thead><tr><th>Heure</th><th>Source</th><th>Commande</th></tr></thead><tbody>${lignes}</tbody></table>` : '<p class="mu" style="padding:12px">Aucune commande envoyée pour l’instant.</p>'}</div>
+  <div class="foot"><button class="btn" id="bJEff">🗑 Effacer le journal</button><div class="acts2" style="margin:0"><button class="btn" id="bJMaj">Actualiser</button><button class="btn pri" style="padding:8px 22px" id="bJFer">Fermer</button></div></div>`);
+  $("bJMaj").onclick = journalOuvrir; $("bJFer").onclick = fermer;
+  $("bJEff").onclick = async () => { if (!confirm("Effacer tout le journal des commandes ?")) return; await J("/journal", "DELETE"); journalOuvrir(); };
+}
+$("bJournal").onclick = journalOuvrir;
 $("bRescan").onclick = async () => {
   const b = $("bRescan"); b.disabled = true; b.textContent = "⏳ Scan…";
   try {
@@ -240,7 +265,7 @@ $("bRescan").onclick = async () => {
 $("bNew").onclick = async () => {
   if (!confirm("Effacer la conversation et la mémoire de l'IA ?")) return;
   try { await fetch(API + "/history", { method: "DELETE" }); } catch (e) {}
-  hist = []; totalCout = 0; try { localStorage.removeItem("coutSession"); } catch (e) {} majCout(); $("msgs").innerHTML = ""; $("acts").innerHTML = '<p class="mu">Rien pour l\'instant.</p>'; welcome();
+  hist = []; $("msgs").innerHTML = ""; $("acts").innerHTML = '<p class="mu">Rien pour l\'instant.</p>'; welcome();
 };
 $("msgs").addEventListener("click", e => {
   if (!e.target.classList.contains("copy")) return;
@@ -324,6 +349,9 @@ async function reglages() {
   <h4>Intelligence artificielle</h4>${blocCle()}
   <label>Modèle par défaut</label><select id="mod">${opts}</select>
   <label>Tours d'outils maximum par demande</label><input id="tours" type="number" min="1" max="100" value="${r.max_tours_outils}">
+  <label>Plafond de dépense par session, en $ (0 = aucun plafond)</label><input id="plaf" type="number" min="0" max="1000" step="0.5" value="${r.plafond_session_usd}">
+  <div class="hint">Dépensé depuis le lancement : ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Alerte à 80 %, nouvelles demandes bloquées au plafond.</div>
+  <div class="acts2"><button class="btn" id="bRaz">Remettre le compteur à zéro</button></div><div class="msg" id="cMsg"></div>
   <h4>Console grandMA3</h4>${blocOsc()}
   <label>Dossier gma3_library</label><input id="bib" value="${esc(r.dossier_bibliotheque)}">
   <div class="acts2"><button class="btn" id="bPlug">Vérifier le plugin AI_Index</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>
@@ -335,8 +363,9 @@ async function reglages() {
   lierPlugin();
   $("bHist").onclick = async () => { if (!confirm("Effacer tout l'historique du chat ?")) return; await fetch(API + "/history", { method: "DELETE" }); hist = []; $("msgs").innerHTML = ""; welcome(); say("gMsg", true, "Historique effacé."); };
   $("bWiz").onclick = assistant; $("bClose").onclick = fermer;
+  $("bRaz").onclick = async () => { majCout(await J("/session/reinitialiser", "POST")); say("cMsg", true, "Compteur remis à zéro."); };
   $("bSave").onclick = async () => {
-    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, dossier_bibliotheque: $("bib").value, theme: $("thm").value });
+    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, dossier_bibliotheque: $("bib").value, theme: $("thm").value });
     if (!d.ok) return say("gMsg", false, Object.values(d.erreurs).join(" "));
     applyTheme(d.reglages.theme); $("modele").value = d.reglages.modele_defaut;
     try { localStorage.setItem("modele", d.reglages.modele_defaut); } catch (e) {}
@@ -375,7 +404,7 @@ $("ov").addEventListener("mousedown", e => { if (e.target === $("ov")) fermer();
     hist.forEach(m => { if (typeof m.content === "string") addMsg(m.role, m.content); });
   } catch (e) {}
   if (!hist.length) welcome();
-  majCout();
+  try { localStorage.removeItem("coutSession"); } catch (e) {}   // ancien compteur, remplacé par celui du serveur
   refresh();
   try {
     R = await J("/reglages"); applyTheme(R.reglages.theme);
