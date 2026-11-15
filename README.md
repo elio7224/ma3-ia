@@ -24,6 +24,8 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 - Répondre à des questions sur ton show (macros, séquences, presets, groupes, MAtricks, apparences).
 - Créer et modifier des objets : macros (y compris en masse), MAtricks, grilles d'effets, commandes libres.
 - Consulter le manuel officiel grandMA3 quand il doute d'une syntaxe.
+- **Mode validation** (réglable) : l'IA prépare les commandes sans les envoyer, tu les vérifies dans le chat
+  puis tu cliques sur « Envoyer » ou « Annuler ». Idéal en répétition.
 - **Journal des commandes** : tout ce qui a été envoyé à la console, avec l'heure et l'outil de l'IA qui l'a envoyé.
 - **Garde-fou de coût** : plafond de dépense par session, alerte à 80 %, blocage au plafond.
 - **Sauvegarde automatique du show** avant chaque action de masse (génération de macros, Delete/Store/Copy/Move

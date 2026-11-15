@@ -8,6 +8,7 @@ import operator
 import xml.etree.ElementTree as ET
 from itertools import product
 from ma3 import MA3
+import ma3 as osc
 from i18n import tr
 
 ma3 = MA3()
@@ -489,6 +490,11 @@ def sauvegarder_avant_masse() -> str:
         return tr("(Sauvegarde automatique désactivée dans les Réglages : aucune copie faite.)", "(Automatic backup turned off in Settings: no copy made.)")
     if time.time() - _derniere_sauvegarde[0] < SAUVEGARDE_INTERVALLE_S:
         return tr("(Show déjà sauvegardé il y a moins de 2 minutes : pas de nouvelle copie.)", "(Show already saved less than 2 minutes ago: no new copy.)")
+    if osc.en_capture():
+        # Mode validation : SaveShow part en premier quand l'utilisateur valide (horodaté à l'envoi réel).
+        ma3.send("SaveShow")
+        return tr("💾 SaveShow sera envoyé en premier, avant l'action, quand l'utilisateur validera.",
+                  "💾 SaveShow will be sent first, before the action, once the user approves.")
     ma3.send("SaveShow")
     _derniere_sauvegarde[0] = time.time()
     time.sleep(1.0)                    # laisse la console écrire le fichier avant la suite
@@ -635,7 +641,7 @@ def generate_macros_from_template(start_macro: int = 1, name_template: str = "Ma
     for num, nom, lignes in macros:
         for c in _commandes_macro(num, nom, lignes):
             ma3.send(c)
-            if delai:
+            if delai and not osc.en_capture():
                 time.sleep(delai)
     return f"{note}\n" + tr(f"Succès : {total} macros envoyées, numéros {premier} à {dernier}.", f"Done: {total} macros sent, numbers {premier} to {dernier}.")
 

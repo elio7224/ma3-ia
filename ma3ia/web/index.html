@@ -80,6 +80,7 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
   <div class="hr">
     <span class="chip"><i id="dot" class="dot"></i><span id="st">Connexion…</span></span>
     <select id="modele" class="btn" title="Modèle de l'IA"><option value="haiku">Haiku 5.5 · économique</option><option value="sonnet">Sonnet 5.5 · plus puissant</option></select>
+    <a class="chip" id="modeVal" href="#" style="display:none;color:var(--ac3);border-color:var(--ac);text-decoration:none"></a>
     <a class="chip" id="plugMaj" href="#" style="display:none;color:var(--yl);border-color:var(--yl);text-decoration:none"></a>
     <a class="chip" id="maj" href="#" style="display:none;color:var(--yl);border-color:var(--yl);text-decoration:none"></a>
     <span class="chip tot" id="cout" title="Coût estimé depuis le lancement de l'app, et plafond (⚙ Réglages)">Session : ≈ 0,000 $</span>
@@ -199,6 +200,28 @@ function addCout(u) {
     `${u.modele} · ${nb(entree)} input tokens (${nb(u.cache_read)} cached) · ${nb(u.output)} output · ≈ ${usd(u.cout_usd, 4)} $`);
   $("msgs").appendChild(d); scroll();
 }
+// Mode validation : carte listant les commandes préparées, avec Envoyer / Annuler.
+function carteAttente(a) {
+  const d = document.createElement("div"); d.className = "attente";
+  d.style.cssText = "margin:-4px 0 0 44px;border:1px solid var(--ac);border-radius:12px;padding:12px 14px;background:var(--bg2)";
+  d.innerHTML = `<div class="titre" style="font-weight:600;margin-bottom:6px">${tr(`⏸ ${a.commandes.length} commande(s) prête(s) — pas encore envoyée(s)`, `⏸ ${a.commandes.length} command(s) ready — not sent yet`)} <span class="tag" style="margin-left:6px">${esc(a.outil)}</span></div>
+    <pre style="max-height:220px;overflow:auto;margin:0 0 10px;font-size:.8rem;font-family:ui-monospace,Consolas,monospace">${esc(a.commandes.join("\n"))}</pre>
+    <div class="acts2" style="margin:0"><button class="btn pri" style="padding:7px 16px">${tr("✅ Envoyer à la console", "✅ Send to the console")}</button><button class="btn">${tr("✖ Annuler", "✖ Cancel")}</button></div>
+    <div class="msg"></div>`;
+  const [bOk, bNon] = d.querySelectorAll("button"), msg = d.querySelector(".msg");
+  const fin = (ok, texte, envoye) => {
+    d.querySelector(".acts2").remove(); msg.className = "msg " + (ok ? "ok" : "bad"); msg.textContent = texte;
+    d.querySelector(".titre").firstChild.textContent = envoye ? tr(`✅ ${a.commandes.length} commande(s) envoyée(s) `, `✅ ${a.commandes.length} command(s) sent `) : tr(`✖ ${a.commandes.length} commande(s) non envoyée(s) `, `✖ ${a.commandes.length} command(s) not sent `);
+    d.style.borderColor = "var(--bd)";
+  };
+  bOk.onclick = async () => {
+    bOk.disabled = bNon.disabled = true;
+    const r = await J(`/attente/${a.id}/envoyer`, "POST");
+    fin(r.ok, r.message + (r.ok ? " " + new Date().toLocaleTimeString(LANG === "en" ? "en-GB" : "fr-FR") : ""), r.ok);
+  };
+  bNon.onclick = async () => { bOk.disabled = bNon.disabled = true; const r = await J(`/attente/${a.id}/annuler`, "POST"); fin(false, r.message, false); };
+  $("msgs").appendChild(d); scroll();
+}
 function welcome() {
   addMsg("assistant", tr("## Bonjour 👋\nL'agent grandMA3 est prêt. Voici quelques idées pour commencer :",
     "## Hello 👋\nThe grandMA3 agent is ready. Here are a few ideas to get started:"));
@@ -220,6 +243,12 @@ async function refresh() {
     $("st").parentElement.title = parts.length ? parts.join("\n") : "";
     $("dot").className = "dot " + (parts.length ? "ok" : "warn");
     if (d.session) majCout(d.session);
+    // Mode validation actif : pastille qui le rappelle (clic = Réglages).
+    const mv = $("modeVal");
+    mv.style.display = d.validation ? "" : "none";
+    mv.textContent = tr("⏸ Mode validation", "⏸ Approval mode");
+    mv.title = tr("Les commandes de l'IA attendent ta validation avant d'être envoyées. Clique pour changer.", "The AI's commands wait for your approval before being sent. Click to change.");
+    mv.onclick = e => { e.preventDefault(); reglages(); };
     // Ancienne version du plugin dans la console : pastille qui ouvre les Réglages.
     const pm = $("plugMaj"), p = d.plugin || {};
     if (p.a_mettre_a_jour) {
@@ -243,6 +272,7 @@ async function send(txt) {
     const d = await r.json(); t.remove();
     if (d.messages) hist = d.messages;
     addMsg("assistant", d.response || tr("(réponse vide)", "(empty response)"));
+    (d.en_attente || []).forEach(carteAttente);
     if (d.usage) addCout(d.usage);
     if (d.session) majCout(d.session);
     if (d.actions && d.actions.length) d.actions.forEach(addAct);
@@ -422,6 +452,9 @@ async function reglages() {
   <div class="hint">${tr(`Dépensé depuis le lancement : ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Alerte à 80 %, nouvelles demandes bloquées au plafond.`, `Spent since launch: ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Warning at 80%, new requests blocked at the limit.`)}</div>
   <div class="acts2"><button class="btn" id="bRaz">${tr("Remettre le compteur à zéro", "Reset the counter")}</button></div><div class="msg" id="cMsg"></div>
   <h4>${tr("Console grandMA3", "grandMA3 console")}</h4>${blocOsc()}
+  <label>${tr("Mode validation (je valide avant l'envoi)", "Approval mode (I approve before sending)")}</label><select id="valid"><option value="false"${r.validation_manuelle ? "" : " selected"}>${tr("Désactivé : l'IA envoie directement", "Off: the AI sends directly")}</option><option value="true"${r.validation_manuelle ? " selected" : ""}>${tr("Activé : je vérifie puis je clique sur Envoyer", "On: I check, then click Send")}</option></select>
+  <div class="hint">${tr("Activé, l'IA prépare les commandes (macros, commandes, générations…) sans les envoyer : elles s'affichent dans le chat avec « Envoyer » et « Annuler ». Idéal en répétition. La lecture du show n'est pas concernée.",
+    "When on, the AI prepares the commands (macros, commands, generations…) without sending them: they show in the chat with \"Send\" and \"Cancel\". Ideal in rehearsal. Reading the show is not affected.")}</div>
   <label>${tr("Sauvegarde automatique avant les actions de masse", "Automatic backup before bulk actions")}</label><select id="sauv"><option value="true"${r.sauvegarde_auto ? " selected" : ""}>${tr("Activée", "On")}</option><option value="false"${r.sauvegarde_auto ? "" : " selected"}>${tr("Désactivée", "Off")}</option></select>
   <div class="hint">${tr("Avant de générer des macros ou d'agir sur une plage (Delete / Store / Copy / Move … Thru …), l'app envoie <code>SaveShow</code> : grandMA3 garde une copie datée dans Backup Shows (Menu › Backup › Load). 2 minutes minimum entre deux sauvegardes.",
     "Before generating macros or acting on a range (Delete / Store / Copy / Move … Thru …), the app sends <code>SaveShow</code>: grandMA3 keeps a dated copy in Backup Shows (Menu › Backup › Load). At least 2 minutes between two backups.")}</div>
@@ -441,7 +474,7 @@ async function reglages() {
   $("bRaz").onclick = async () => { majCout(await J("/session/reinitialiser", "POST")); say("cMsg", true, tr("Compteur remis à zéro.", "Counter reset.")); };
   $("bSave").onclick = async () => {
     const avant = r.langue;
-    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, sauvegarde_auto: $("sauv").value === "true", verifier_mises_a_jour: $("vmaj").value === "true", dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
+    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, sauvegarde_auto: $("sauv").value === "true", validation_manuelle: $("valid").value === "true", verifier_mises_a_jour: $("vmaj").value === "true", dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
     if (!d.ok) return say("gMsg", false, Object.values(d.erreurs).join(" "));
     if (d.reglages.langue !== avant) return location.reload();   // nouvelle langue : on recharge toute l'interface
     applyTheme(d.reglages.theme); $("modele").value = d.reglages.modele_defaut;

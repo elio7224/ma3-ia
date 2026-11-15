@@ -31,6 +31,7 @@ DEFAUTS = {
     "langue": "auto",               # auto (langue de Windows), fr ou en
     "sauvegarde_auto": True,        # SaveShow avant les actions de masse
     "verifier_mises_a_jour": True,  # regarde les Releases GitHub au lancement
+    "validation_manuelle": False,   # l'IA prépare, l'utilisateur valide avant l'envoi
     "plugin_emplacement": 99,       # emplacement du pool Plugins pour l'installation d'AI_Index
     "premier_lancement_fait": False,
 }
@@ -104,7 +105,7 @@ def _valider(cle: str, valeur):
         return (n, None) if 1 <= n <= 9999 else (None, tr("L'emplacement du plugin doit être entre 1 et 9999.", "The plugin slot must be between 1 and 9999."))
     if cle == "langue":
         return (valeur, None) if valeur in LANGUES else (None, tr(f"Langue inconnue : {valeur!r}.", f"Unknown language: {valeur!r}."))
-    if cle in ("premier_lancement_fait", "sauvegarde_auto", "verifier_mises_a_jour"):
+    if cle in ("premier_lancement_fait", "sauvegarde_auto", "verifier_mises_a_jour", "validation_manuelle"):
         if isinstance(valeur, str):
             valeur = valeur.strip().lower() in ("1", "true", "oui", "yes", "on")
         return bool(valeur), None
