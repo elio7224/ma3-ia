@@ -26,6 +26,8 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 - Consulter le manuel officiel grandMA3 quand il doute d'une syntaxe.
 - **Journal des commandes** : tout ce qui a été envoyé à la console, avec l'heure et l'outil de l'IA qui l'a envoyé.
 - **Garde-fou de coût** : plafond de dépense par session, alerte à 80 %, blocage au plafond.
+- **Sauvegarde automatique du show** avant chaque action de masse (génération de macros, Delete/Store/Copy/Move
+  sur une plage) : l'app envoie `SaveShow`, et grandMA3 garde une copie datée dans *Backup Shows*.
 - **Interface en français et en anglais** (automatique selon Windows, modifiable dans les Réglages).
 
 ## Prérequis
@@ -53,6 +55,8 @@ Détails (données, création du `.exe`, tests) : voir [README_BUREAU.md](README
 - La clé API est rangée dans le coffre Windows (Credential Manager), jamais dans un fichier du projet.
 - OSC est à sens unique : l'IA envoie les commandes mais ne peut pas confirmer qu'elles ont réussi.
   Teste d'abord sur une copie de ton show.
+- Avant une action de masse, le show est sauvegardé automatiquement (réglable dans ⚙ Réglages). Pour annuler :
+  dans grandMA3, **Menu → Backup → Load → Backup Shows**, puis choisis la copie datée d'avant l'action.
 - Pas d'IA aux commandes pendant un spectacle : utilise MA3-IA en préparation, en répétition ou hors public,
   et vérifie toujours le résultat sur la console avant de jouer.
 - Ton historique de chat, tes réglages et le journal restent sur ton PC (dossier de configuration de l'app),

@@ -26,6 +26,8 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 - Look up the official grandMA3 manual when it is unsure about a syntax.
 - **Command log**: everything sent to the console, with the time and the AI tool that sent it.
 - **Cost guard**: spending limit per session, warning at 80%, requests blocked at the limit.
+- **Automatic show backup** before every bulk action (macro generation, Delete/Store/Copy/Move on a range):
+  the app sends `SaveShow`, and grandMA3 keeps a dated copy in *Backup Shows*.
 - **English and French interface** (automatic from the Windows language, can be changed in Settings).
 
 The AI answers in the language you write in.
@@ -55,6 +57,8 @@ More details (data locations, building the `.exe`, tests): see [README_BUREAU.md
 - The API key is stored in Windows Credential Manager, never in a project file.
 - OSC is one-way: the AI sends commands but cannot confirm they succeeded.
   Always test on a copy of your show first.
+- Before a bulk action, the show is saved automatically (can be turned off in ⚙ Settings). To undo:
+  in grandMA3, **Menu → Backup → Load → Backup Shows**, then pick the dated copy from before the action.
 - No AI at the controls during a show: use MA3-IA for preparation, rehearsals or with no audience,
   and always check the result on the console before going live.
 - Your chat history, settings and command log stay on your PC (the app's configuration folder),

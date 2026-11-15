@@ -366,6 +366,9 @@ async function reglages() {
   <div class="hint">${tr(`Dépensé depuis le lancement : ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Alerte à 80 %, nouvelles demandes bloquées au plafond.`, `Spent since launch: ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Warning at 80%, new requests blocked at the limit.`)}</div>
   <div class="acts2"><button class="btn" id="bRaz">${tr("Remettre le compteur à zéro", "Reset the counter")}</button></div><div class="msg" id="cMsg"></div>
   <h4>${tr("Console grandMA3", "grandMA3 console")}</h4>${blocOsc()}
+  <label>${tr("Sauvegarde automatique avant les actions de masse", "Automatic backup before bulk actions")}</label><select id="sauv"><option value="true"${r.sauvegarde_auto ? " selected" : ""}>${tr("Activée", "On")}</option><option value="false"${r.sauvegarde_auto ? "" : " selected"}>${tr("Désactivée", "Off")}</option></select>
+  <div class="hint">${tr("Avant de générer des macros ou d'agir sur une plage (Delete / Store / Copy / Move … Thru …), l'app envoie <code>SaveShow</code> : grandMA3 garde une copie datée dans Backup Shows (Menu › Backup › Load). 2 minutes minimum entre deux sauvegardes.",
+    "Before generating macros or acting on a range (Delete / Store / Copy / Move … Thru …), the app sends <code>SaveShow</code>: grandMA3 keeps a dated copy in Backup Shows (Menu › Backup › Load). At least 2 minutes between two backups.")}</div>
   <label>${tr("Dossier gma3_library", "gma3_library folder")}</label><input id="bib" value="${esc(r.dossier_bibliotheque)}">
   <div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier le plugin AI_Index", "Check the AI_Index plugin")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>
   <h4>${tr("Apparence et données", "Appearance and data")}</h4>
@@ -380,7 +383,7 @@ async function reglages() {
   $("bRaz").onclick = async () => { majCout(await J("/session/reinitialiser", "POST")); say("cMsg", true, tr("Compteur remis à zéro.", "Counter reset.")); };
   $("bSave").onclick = async () => {
     const avant = r.langue;
-    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
+    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, sauvegarde_auto: $("sauv").value === "true", dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
     if (!d.ok) return say("gMsg", false, Object.values(d.erreurs).join(" "));
     if (d.reglages.langue !== avant) return location.reload();   // nouvelle langue : on recharge toute l'interface
     applyTheme(d.reglages.theme); $("modele").value = d.reglages.modele_defaut;

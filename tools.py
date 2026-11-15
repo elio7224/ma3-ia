@@ -458,16 +458,53 @@ def configure_matricks(number: int = 1, name: str = "MAtricks", xgroup: int = No
     return f"MAtricks {number} ('{name}') configuré avec succès."
 
 
+# ----------------------------------------------------------------------
+#  Sauvegarde automatique du show avant les actions de masse
+#  (manuel 2.5 : à chaque SaveShow, grandMA3 garde une copie datée dans « Backup Shows », 10 max par show)
+# ----------------------------------------------------------------------
+
+SAUVEGARDE_INTERVALLE_S = 120          # pas plus d'une sauvegarde toutes les 2 min (préserve les 10 copies de la console)
+_derniere_sauvegarde = [0.0]
+_MOTIF_MASSE = re.compile(r"^\s*(delete|store|copy|move)\b.*\bthru\b", re.IGNORECASE)
+
+
+def est_commande_de_masse(cmd: str) -> bool:
+    """Delete / Store / Copy / Move sur une plage (… Thru …)."""
+    return bool(_MOTIF_MASSE.search(cmd or ""))
+
+
+def sauvegarder_avant_masse() -> str:
+    """Envoie SaveShow avant une action de masse. Renvoie une ligne à ajouter au résultat de l'outil."""
+    try:
+        from reglages import charger
+        actif = charger().get("sauvegarde_auto", True)
+    except Exception:
+        actif = True
+    if not actif:
+        return "(Sauvegarde automatique désactivée dans les Réglages : aucune copie faite.)"
+    if time.time() - _derniere_sauvegarde[0] < SAUVEGARDE_INTERVALLE_S:
+        return "(Show déjà sauvegardé il y a moins de 2 minutes : pas de nouvelle copie.)"
+    ma3.send("SaveShow")
+    _derniere_sauvegarde[0] = time.time()
+    time.sleep(1.0)                    # laisse la console écrire le fichier avant la suite
+    return ("💾 Show sauvegardé (SaveShow) avant l'action : grandMA3 garde une copie datée dans Backup Shows "
+            "(Menu > Backup > Load > Backup Shows pour revenir en arrière).")
+
+
 def run_command(cmd: str = "") -> str:
     if not cmd:
         return "Aucune commande fournie."
+    if est_commande_de_masse(cmd):
+        note = sauvegarder_avant_masse()
+        return f"{note}\n{ma3.send(cmd)}"
     return ma3.send(cmd)
 
 
 def generate_fx_grid(start_macro: int = 1, group_start: int = 1, group_count: int = 1, phases: list[int] = None) -> str:
     if phases is None:
         phases = [0]
-        
+    note = sauvegarder_avant_masse()
+
     current_macro = start_macro
     total_created = 0
     for g in range(group_start, group_start + group_count):
@@ -480,7 +517,7 @@ def generate_fx_grid(start_macro: int = 1, group_start: int = 1, group_count: in
             create_macro(current_macro, macro_name, lines)
             current_macro += 1
             total_created += 1
-    return f"Succès ! {total_created} macros générées."
+    return f"{note}\nSuccès ! {total_created} macros générées."
 
 
 MAX_MACROS_PAR_APPEL = 1000
@@ -586,13 +623,14 @@ def generate_macros_from_template(start_macro: int = 1, name_template: str = "Ma
             apercu.append(f"Macro {num} « {nom} » :\n" + "\n".join(f"    {i}. {l}" for i, l in enumerate(lignes, 1)))
         return f"APERÇU : {total} macros, numéros {premier} à {dernier}.\n\n" + "\n\n".join(apercu)
 
+    note = sauvegarder_avant_masse()
     delai = max(0, delai_ms) / 1000.0
     for num, nom, lignes in macros:
         for c in _commandes_macro(num, nom, lignes):
             ma3.send(c)
             if delai:
                 time.sleep(delai)
-    return f"Succès : {total} macros envoyées, numéros {premier} à {dernier}."
+    return f"{note}\nSuccès : {total} macros envoyées, numéros {premier} à {dernier}."
 
 
 def nettoyer_macros_existantes(start_macro: int, end_macro: int) -> str:
