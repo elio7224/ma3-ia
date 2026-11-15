@@ -12,6 +12,7 @@ import sys
 import time
 
 from config import CLE_FICHIER, MODELE_DEFAUT, MODELES, MAX_TOURS_OUTILS
+from i18n import LANGUES, tr
 
 SERVICE_COFFRE = "ma3-ia"
 UTILISATEUR_COFFRE = "anthropic_api_key"
@@ -27,6 +28,7 @@ DEFAUTS = {
     "theme": "sombre",
     "max_tours_outils": MAX_TOURS_OUTILS,
     "plafond_session_usd": 1.0,     # 0 = pas de plafond
+    "langue": "auto",               # auto (langue de Windows), fr ou en
     "premier_lancement_fait": False,
 }
 THEMES = ("sombre", "clair")
@@ -57,36 +59,38 @@ def dossier_ressources() -> str:
 def _valider(cle: str, valeur):
     """Renvoie (valeur_nettoyée, None) ou (None, message_d_erreur)."""
     if cle == "modele_defaut":
-        return (valeur, None) if valeur in MODELES else (None, f"Modèle inconnu : {valeur!r}.")
+        return (valeur, None) if valeur in MODELES else (None, tr(f"Modèle inconnu : {valeur!r}.", f"Unknown model: {valeur!r}."))
     if cle == "osc_hote":
         v = str(valeur).strip()
-        return (v, None) if v and " " not in v and len(v) <= 253 else (None, "Adresse IP / nom d'hôte invalide.")
+        return (v, None) if v and " " not in v and len(v) <= 253 else (None, tr("Adresse IP / nom d'hôte invalide.", "Invalid IP address / host name."))
     if cle == "osc_port":
         try:
             p = int(valeur)
         except (TypeError, ValueError):
-            return None, "Le port doit être un nombre."
-        return (p, None) if 1 <= p <= 65535 else (None, "Le port doit être entre 1 et 65535.")
+            return None, tr("Le port doit être un nombre.", "The port must be a number.")
+        return (p, None) if 1 <= p <= 65535 else (None, tr("Le port doit être entre 1 et 65535.", "The port must be between 1 and 65535."))
     if cle == "dossier_bibliotheque":
         v = str(valeur).strip().strip('"')
-        return (v, None) if v else (None, "Chemin vide.")
+        return (v, None) if v else (None, tr("Chemin vide.", "Empty path."))
     if cle == "theme":
-        return (valeur, None) if valeur in THEMES else (None, f"Thème inconnu : {valeur!r}.")
+        return (valeur, None) if valeur in THEMES else (None, tr(f"Thème inconnu : {valeur!r}.", f"Unknown theme: {valeur!r}."))
     if cle == "max_tours_outils":
         try:
             n = int(valeur)
         except (TypeError, ValueError):
-            return None, "Le nombre de tours doit être un entier."
-        return (n, None) if 1 <= n <= 100 else (None, "Le nombre de tours doit être entre 1 et 100.")
+            return None, tr("Le nombre de tours doit être un entier.", "The number of rounds must be an integer.")
+        return (n, None) if 1 <= n <= 100 else (None, tr("Le nombre de tours doit être entre 1 et 100.", "The number of rounds must be between 1 and 100."))
     if cle == "plafond_session_usd":
         try:
             v = round(float(str(valeur).replace(",", ".").replace("$", "").strip()), 2)
         except (TypeError, ValueError):
-            return None, "Le plafond doit être un montant en dollars (ex : 1,50)."
-        return (v, None) if 0 <= v <= 1000 else (None, "Le plafond doit être entre 0 et 1000 $ (0 = aucun plafond).")
+            return None, tr("Le plafond doit être un montant en dollars (ex : 1,50).", "The limit must be an amount in dollars (e.g. 1.50).")
+        return (v, None) if 0 <= v <= 1000 else (None, tr("Le plafond doit être entre 0 et 1000 $ (0 = aucun plafond).", "The limit must be between 0 and 1000 $ (0 = no limit)."))
+    if cle == "langue":
+        return (valeur, None) if valeur in LANGUES else (None, tr(f"Langue inconnue : {valeur!r}.", f"Unknown language: {valeur!r}."))
     if cle == "premier_lancement_fait":
         return bool(valeur), None
-    return None, f"Réglage inconnu : {cle}."
+    return None, tr(f"Réglage inconnu : {cle}.", f"Unknown setting: {cle}.")
 
 
 def charger() -> dict:
@@ -127,7 +131,7 @@ def enregistrer(modifs: dict):
             json.dump(courant, f, ensure_ascii=False, indent=2)
         os.replace(tmp, fichier_reglages())
     except OSError as e:
-        return courant, {"_fichier": f"Écriture impossible : {e}"}
+        return courant, {"_fichier": tr(f"Écriture impossible : {e}", f"Cannot write the file: {e}")}
     return courant, {}
 
 
@@ -146,9 +150,9 @@ def effacer_historique() -> str:
     try:
         with open(chemin_historique(), "w", encoding="utf-8") as f:
             f.write("[]")
-        return "Historique effacé."
+        return tr("Historique effacé.", "History cleared.")
     except OSError as e:
-        return f"Erreur : {e}"
+        return tr(f"Erreur : {e}", f"Error: {e}")
 
 
 # ---------------------------------------------------------------- clé API (coffre)
@@ -217,20 +221,20 @@ def etat_cle() -> dict:
 def enregistrer_cle(cle: str):
     """Renvoie (ok, message). Stocke dans le coffre Windows."""
     if not format_cle_valide(cle):
-        return False, "Clé invalide : elle doit commencer par sk-ant-."
+        return False, tr("Clé invalide : elle doit commencer par sk-ant-.", "Invalid key: it must start with sk-ant-.")
     try:
         _coffre_ecrire(cle.strip())
     except Exception as e:
-        return False, f"Coffre indisponible ({type(e).__name__}). Utilise la variable ANTHROPIC_API_KEY."
-    return True, "Clé enregistrée dans le coffre Windows."
+        return False, tr(f"Coffre indisponible ({type(e).__name__}). Utilise la variable ANTHROPIC_API_KEY.", f"Windows Credential Manager unavailable ({type(e).__name__}). Use the ANTHROPIC_API_KEY variable.")
+    return True, tr("Clé enregistrée dans le coffre Windows.", "Key saved in Windows Credential Manager.")
 
 
 def supprimer_cle():
     try:
         _coffre_supprimer()
     except Exception as e:
-        return False, f"Suppression impossible ({type(e).__name__})."
-    return True, "Clé supprimée du coffre Windows."
+        return False, tr(f"Suppression impossible ({type(e).__name__}).", f"Cannot delete ({type(e).__name__}).")
+    return True, tr("Clé supprimée du coffre Windows.", "Key removed from Windows Credential Manager.")
 
 
 def tester_cle(cle=None):
@@ -238,20 +242,20 @@ def tester_cle(cle=None):
     if not cle:
         cle, _ = trouver_cle()
     if not format_cle_valide(cle):
-        return False, "Aucune clé valide à tester (elle doit commencer par sk-ant-)."
+        return False, tr("Aucune clé valide à tester (elle doit commencer par sk-ant-).", "No valid key to test (it must start with sk-ant-).")
     try:
         import anthropic
         anthropic.Anthropic(api_key=cle.strip(), max_retries=0, timeout=15).models.list(limit=1)
-        return True, "Clé acceptée par l'API Anthropic."
+        return True, tr("Clé acceptée par l'API Anthropic.", "Key accepted by the Anthropic API.")
     except Exception as e:
         import anthropic
         if isinstance(e, anthropic.AuthenticationError):
-            return False, "Clé refusée par l'API Anthropic."
+            return False, tr("Clé refusée par l'API Anthropic.", "Key rejected by the Anthropic API.")
         if isinstance(e, anthropic.PermissionDeniedError):
-            return False, "Clé reconnue mais sans permission suffisante."
+            return False, tr("Clé reconnue mais sans permission suffisante.", "Key recognised but without sufficient permission.")
         if isinstance(e, (anthropic.APIConnectionError, anthropic.APITimeoutError)):
-            return False, "Connexion à l'API impossible : vérifie ta connexion Internet."
-        return False, f"Test impossible : {type(e).__name__}."
+            return False, tr("Connexion à l'API impossible : vérifie ta connexion Internet.", "Cannot reach the API: check your Internet connection.")
+        return False, tr(f"Test impossible : {type(e).__name__}.", f"Test failed: {type(e).__name__}.")
 
 
 # ---------------------------------------------------------------- console grandMA3
@@ -265,7 +269,7 @@ def tester_osc(hote: str, port):
     try:
         socket.getaddrinfo(hote_v, port_v, type=socket.SOCK_DGRAM)
     except OSError:
-        return False, f"Adresse introuvable : {hote_v}."
+        return False, tr(f"Adresse introuvable : {hote_v}.", f"Address not found: {hote_v}.")
     try:
         from pythonosc.udp_client import SimpleUDPClient
         import journal
@@ -274,9 +278,11 @@ def tester_osc(hote: str, port):
         with journal.source("Test de connexion"):
             journal.noter(commande, f"{hote_v}:{port_v}")
     except Exception as e:
-        return False, f"Envoi impossible : {type(e).__name__} : {e}"
-    return True, (f"Message envoyé à {hote_v}:{port_v} (UDP). La console ne répond pas en OSC : "
-                  "regarde si « ma3-ia : test de connexion » apparaît dans sa ligne de commande / son historique.")
+        return False, tr(f"Envoi impossible : {type(e).__name__} : {e}", f"Cannot send: {type(e).__name__}: {e}")
+    return True, tr(f"Message envoyé à {hote_v}:{port_v} (UDP). La console ne répond pas en OSC : "
+                    "regarde si « ma3-ia : test de connexion » apparaît dans sa ligne de commande / son historique.",
+                    f"Message sent to {hote_v}:{port_v} (UDP). The console does not reply over OSC: "
+                    "check that 'ma3-ia : test de connexion' appears in its command line / history.")
 
 
 def verifier_plugin(bibliotheque: str) -> dict:

@@ -112,3 +112,26 @@ def test_outil_ia_journalise_avec_source(appli):
     r = _demander(app)
     assert envoyes == ["ClearAll"] and r["response"] == "fait"
     assert journal.lire()[0]["source"] == "IA · run_command"
+
+
+# ---------------------------------------------------------------- langue
+
+def test_langue_reglage_et_traductions(monkeypatch):
+    import i18n
+    monkeypatch.delenv("MA3IA_LANGUE")
+    assert reglages.enregistrer({"langue": "en"})[0]["langue"] == "en"
+    assert i18n.langue() == "en"
+    assert reglages.enregistrer_cle("pas une clé")[1].startswith("Invalid key")
+    reglages.enregistrer({"langue": "fr"})
+    assert reglages.enregistrer_cle("pas une clé")[1].startswith("Clé invalide")
+    assert reglages.enregistrer({"langue": "de"})[1]                     # langue inconnue refusée
+    reglages.enregistrer({"langue": "auto"})
+    assert i18n.langue() == i18n.langue_systeme() in ("fr", "en")
+
+
+def test_message_plafond_en_anglais(appli, monkeypatch):
+    app, reponses, _ = appli
+    monkeypatch.setenv("MA3IA_LANGUE", "en")
+    reglages.enregistrer({"plafond_session_usd": 0.1})
+    app.COUT_SESSION["usd"] = 0.2
+    assert "Spending limit reached" in _demander(app)["response"]

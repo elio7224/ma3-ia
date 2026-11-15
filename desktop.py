@@ -100,8 +100,10 @@ def main():
     port = port_libre()
     serveur = demarrer_serveur(port)
     if not attendre_serveur(port):
+        from i18n import tr
         f = webview.create_window("MA3-IA", html="<body style='background:#0b0d14;color:#e8eaf0;font-family:sans-serif;padding:40px'>"
-                                  "<h2>Le serveur local n'a pas démarré.</h2><p>Relance l'application.</p>")
+                                  + tr("<h2>Le serveur local n'a pas démarré.</h2><p>Relance l'application.</p>",
+                                       "<h2>The local server did not start.</h2><p>Restart the application.</p>"))
         f.events.shown += lambda: colorer_barre_titre(f, "sombre")
         webview.start(icon=icone)
         return
