@@ -1,5 +1,5 @@
 ; Installateur Windows de MA3-IA (Inno Setup 6).
-; Construit par construire_exe.bat ou par GitHub Actions :  ISCC /DVersion=1.0.0 installeur\MA3-IA.iss
+; Construit par scripts\construire_exe.bat ou par GitHub Actions :  ISCC /DVersion=1.0.0 installeur\MA3-IA.iss
 ; Installe pour l'utilisateur courant uniquement (pas de droits administrateur demandés).
 
 #ifndef Version
@@ -25,7 +25,7 @@ DefaultGroupName=MA3-IA
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 LicenseFile=..\LICENSE
-SetupIconFile=..\ma3ia.ico
+SetupIconFile=..\ma3ia\assets\ma3ia.ico
 UninstallDisplayIcon={app}\MA3-IA.exe
 UninstallDisplayName=MA3-IA
 OutputDir=..\dist

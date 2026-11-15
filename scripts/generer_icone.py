@@ -1,4 +1,4 @@
-# Usage : python generer_icone.py ma3ia.ico
+# Usage : python scripts/generer_icone.py ma3ia/assets/ma3ia.ico
 """Génère ma3ia.ico (16/24/32/48/64/128/256 px, PNG intégrés) sans dépendance : carré violet arrondi + faisceau de projecteur."""
 import math, struct, sys, zlib
 

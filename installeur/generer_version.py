@@ -6,7 +6,7 @@ import os
 import sys
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, RACINE)
+sys.path.insert(0, os.path.join(RACINE, "ma3ia"))
 from version import DESCRIPTION, EDITEUR, NOM, URL, VERSION  # noqa: E402
 
 nums = tuple(int(x) for x in (VERSION.split(".") + ["0", "0", "0"])[:4])

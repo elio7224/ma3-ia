@@ -22,10 +22,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Le tag correspond à version.py
+      - name: Le tag correspond à ma3ia/version.py
         shell: bash
         run: |
-          v=$(python -c "from version import VERSION; print(VERSION)")
+          v=$(cd ma3ia && python -c "from version import VERSION; print(VERSION)")
           test "v$v" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} différent de version.py ($v)"; exit 1; }
 
       - name: Tests
@@ -38,7 +38,7 @@ jobs:
 
       - name: Construction (application + installateur)
         shell: cmd
-        run: construire_exe.bat silencieux
+        run: scripts\construire_exe.bat silencieux
 
       - name: Empreinte SHA-256
         shell: pwsh

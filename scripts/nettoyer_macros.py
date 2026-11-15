@@ -2,6 +2,8 @@ import json
 import os
 import re
 import time
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ma3ia"))
 from ma3 import MA3
 
 # Dossier par défaut de grandMA3

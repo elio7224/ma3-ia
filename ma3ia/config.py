@@ -1,7 +1,8 @@
 import os
 import sys
 
-CLE_FICHIER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cle_api.txt")
+# Ancien emplacement de la clé (racine du dépôt), lu seulement en secours.
+CLE_FICHIER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cle_api.txt")
 MODELES = {
     "haiku": {"id": "claude-haiku-5-5", "nom": "Haiku 5.5",
               "prix": {"in": 0.10, "out": 0.50, "cache_read": 0.01, "cache_write": 0.125}},

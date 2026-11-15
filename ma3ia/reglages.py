@@ -49,10 +49,17 @@ def fichier_reglages() -> str:
 
 
 def dossier_ressources() -> str:
-    """Dossier contenant index.html et ai_index.lua (dossier du projet, ou bundle PyInstaller)."""
+    """Dossier du code `ma3ia/` (contient web/, assets/, memo_grandma3.md), ou le bundle PyInstaller."""
     if getattr(sys, "frozen", False):
         return getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
     return os.path.dirname(os.path.abspath(__file__))
+
+
+def chemin_plugin_lua() -> str:
+    """Plugin à importer dans la console : `plugin/ai_index.lua` (à la racine du dépôt, ou dans le bundle)."""
+    if getattr(sys, "frozen", False):
+        return os.path.join(dossier_ressources(), "plugin", "ai_index.lua")
+    return os.path.join(os.path.dirname(dossier_ressources()), "plugin", "ai_index.lua")
 
 
 # ---------------------------------------------------------------- réglages non secrets
@@ -297,7 +304,7 @@ def verifier_plugin(bibliotheque: str) -> dict:
     index = os.path.join(bib, "ai_index.json")
     res = {"bibliotheque": bib, "bibliotheque_ok": os.path.isdir(bib), "plugin_ok": os.path.isfile(plugin), "plugin_chemin": plugin,
            "index_ok": os.path.isfile(index), "index_age_min": None,
-           "lua_source": os.path.join(dossier_ressources(), "ai_index.lua")}
+           "lua_source": chemin_plugin_lua()}
     if res["index_ok"]:
         res["index_age_min"] = round((time.time() - os.path.getmtime(index)) / 60)
     return res

@@ -1,6 +1,6 @@
 """Point d'entrée de l'application de bureau : serveur FastAPI local en arrière-plan + fenêtre native (pywebview).
 
-Lancement : `python desktop.py` (ou run_bureau.bat, ou l'exécutable MA3-IA.exe créé par construire_exe.bat).
+Lancement : `python ma3ia/desktop.py` (ou scripts/run.bat, ou MA3-IA.exe créé par scripts/construire_exe.bat).
 """
 import os
 import socket
@@ -47,7 +47,7 @@ def attendre_serveur(port: int, delai: float = 20.0) -> bool:
     return False
 
 
-ICONE = os.path.join(reglages.dossier_ressources(), "ma3ia.ico")
+ICONE = os.path.join(reglages.dossier_ressources(), "assets", "ma3ia.ico")
 # Couleurs de la barre de titre Windows, alignées sur les thèmes de index.html : (fond, texte, mode sombre)
 BARRE_TITRE = {"sombre": ("#0b0d14", "#e8eaf0", 1), "clair": ("#f4f5fa", "#1b1e2b", 0)}
 

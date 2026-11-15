@@ -1,6 +1,6 @@
 @echo off
 TITLE MA3-IA - installation
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 :: Installation uniquement la premiere fois (ou si requirements.txt a change) :
 :: les lancements suivants ouvrent directement l'app et cette fenetre noire se ferme aussitot.
@@ -20,5 +20,5 @@ if "%INSTALLER%"=="1" (
 )
 
 :: Lance l'application sans console (pythonw), puis cette fenetre se ferme.
-start "" "venv\Scripts\pythonw.exe" desktop.py
+start "" "venv\Scripts\pythonw.exe" ma3ia\desktop.py
 exit
