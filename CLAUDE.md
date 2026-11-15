@@ -1,4 +1,4 @@
-# ma3-ia-V2 — Assistant IA pour grandMA3
+# ma3-ia — Assistant IA pour grandMA3
 
 Agent IA (API Anthropic + outils) qui pilote une console **grandMA3 onPC** (Windows) : lit le showfile
 (index JSON + exports XML) et envoie des commandes par **OSC**. Le développeur parle français :
@@ -17,9 +17,10 @@ réponds, commente et nomme en **français**, explications courtes et simples.
 | `app.py` | FastAPI : `/api/chat` (boucle outils), `/api/sync` (rescan), `/api/status`, `/api/history`, `/api/reglages*`. |
 | `outils.py` | Définitions `TOOLS` + `FUNCS` (partagées par `app.py` et `agent.py`). |
 | `tools.py` | Implémentation des outils : index, export XML, macros, MAtricks, génération en masse. |
-| `reglages.py` | Réglages (`%APPDATA%\ma3-ia\settings.json`), clé API (coffre Windows / keyring), tests OSC/plugin. |
+| `reglages.py` | Réglages (`settings.json` dans le dossier de config, voir plus bas), clé API (coffre Windows / keyring), tests OSC/plugin. |
 | `desktop.py` | Fenêtre pywebview (WebView2) + serveur local sur port libre, barre de titre DWM, icône. |
-| `config.py` | Modèles, prix, prompt système, calcul du coût. |
+| `config.py` | Modèles, prix, prompt système (+ `memo_grandma3.md` injecté), calcul du coût. |
+| `doc_ma3.py` | Outil `doc_grandma3` : pages du manuel officiel 2.5 (téléchargées, cache dans le dossier de config). |
 | `ma3.py` | Client OSC minimal (`/cmd`), sans retour. |
 | `index.html` | Interface (chat, réglages, assistant de 1er lancement). ~30 Ko : utiliser Grep, pas Read entier. |
 | `ai_index.lua` | Plugin console : écrit `gma3_library/ai_index.json`. |
@@ -39,7 +40,7 @@ réponds, commente et nomme en **français**, explications courtes et simples.
 - Pas de guillemets doubles imbriqués dans les lignes de macro envoyées par OSC (utiliser des simples).
 - Presets = `type.numéro` (ex `4.12`) ; les apparences sont dans ShowData, hors DataPool.
 - Lua MA3 : `Printf`, `ErrPrintf`, `DataPool()`, `Root()`, `obj:Children()`, `obj.name`/`obj.no`, toujours sous `pcall`.
-  En cas de doute : `docs/ma3/` ou **demander**, ne pas inventer.
+  En cas de doute : `docs/ma3/manuel/` (manuel 2.5 en local, non versionné) ou **demander**, ne pas inventer.
 
 ## Conventions
 - Noms en français (`lire_xml_temp`, `INDEX_OBJETS`). Lire l'index via `tools.INDEX_OBJETS` (réassigné au rescan).
@@ -50,5 +51,17 @@ réponds, commente et nomme en **français**, explications courtes et simples.
 ## Sécurité
 - Ne jamais lire, afficher ni committer `cle_api.txt`, `.env*` ou une clé `sk-ant-...`. Pas de clé en dur.
 
-## Façon de travailler
-- Petites étapes ; plan avant un changement multi-fichiers. Pas de `git push` sans demande explicite.
+## Données perso (hors du dépôt)
+- Clé API : coffre Windows. Réglages + historique du chat : dossier de config de l'app. Python vient du Microsoft Store,
+  donc `%APPDATA%\ma3-ia` est redirigé vers
+  `%LOCALAPPDATA%\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\Roaming\ma3-ia`.
+- Ce dépôt est **public** (ou destiné à l'être) : rien de perso ne doit y entrer. Avant chaque push, vérifier qu'aucune clé
+  `sk-ant-` ni `memoire_chat.json` n'est commité. L'ancien dépôt `ma3-ia-V2` est archivé (privé, contient une ancienne clé).
+
+## Workflow Git (à suivre)
+- `main` = la version qui marche, celle que le développeur utilise au quotidien. Jamais de travail en cours sur `main`.
+- Un problème ou une idée remonté en utilisant l'app → une **issue** GitHub (`gh issue create`, en français, courte).
+- Une correction = une **branche** `fix/<sujet>` ou `feat/<sujet>` liée à l'issue → tests → le développeur essaie l'app
+  → s'il valide : fusion dans `main`, push, issue fermée (`Fixes #N` dans le commit). Sinon on supprime la branche.
+- `gh` est installé dans `C:\Program Files\GitHub CLI\gh.exe` (pas toujours dans le PATH du shell).
+- Petites étapes ; plan avant un changement multi-fichiers. Push seulement avec l'accord du développeur.
