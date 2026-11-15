@@ -35,7 +35,7 @@ The AI answers in the language you write in.
 ## Requirements
 - Windows 10/11 (64-bit), grandMA3 onPC. Python 3.12 only for the "from source" version.
 - An Anthropic API key (https://console.anthropic.com).
-- On the console: incoming OSC enabled (UDP, address `/cmd`) and the `plugin/ai_index.lua` Lua plugin imported.
+- On the console: incoming OSC enabled (UDP, address `/cmd`). The `AI_Index` plugin is installed from the app (see below).
 
 ## Installation
 **Easiest: the installer** (no Python needed)
@@ -63,6 +63,22 @@ More details (data locations, building the `.exe`, tests): see [README_BUREAU.md
   and always check the result on the console before going live.
 - Your chat history, settings and command log stay on your PC (the app's configuration folder),
   never in the project folder.
+
+## The AI_Index plugin
+To read your show, the AI needs a small Lua plugin in grandMA3: `plugin/ai_index.lua`.
+- **What it does:** on every Rescan, the app runs it over OSC; it writes the list of your objects (macros, sequences,
+  groups, presets…) to `gma3_library\ai_index.json`, which the AI then reads. **It does not change anything in your show.**
+- **Automatic installation** (first-launch wizard or ⚙ Settings → "Install automatically"):
+  1. the app first runs the plugin: if it answers, it is already installed and nothing is imported (no duplicate).
+     If it is not there yet, the console shows "Object not found": this is normal;
+  2. otherwise it writes `ai_index.xml` to `gma3_library\datapools\plugins`;
+  3. it sends `Import Plugin Library "ai_index.xml" At Plugin <n>`: the plugin lands in the chosen slot
+     (99 by default, editable next to the button; **it must be empty** in the Plugins pool);
+  4. it runs it again to check that the index arrives.
+
+  grandMA3 must be open with OSC enabled. The plugin then becomes part of your show: **save the show** to keep it.
+  Every command sent is visible in 📜 Log.
+- **Manual installation** (if needed): in grandMA3's Plugins pool, import `plugin/ai_index.lua` and name it `AI_Index`.
 
 ## License
 Code released under the [MIT](../LICENSE) license: free to use, modify and redistribute, as long as the copyright notice is kept.

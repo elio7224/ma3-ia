@@ -33,7 +33,7 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 ## Prérequis
 - Windows 10/11 (64 bits), grandMA3 onPC. Python 3.12 seulement pour la version « code source ».
 - Une clé API Anthropic (https://console.anthropic.com).
-- Dans la console : OSC entrant activé (UDP, adresse `/cmd`) et le plugin Lua `plugin/ai_index.lua` importé.
+- Dans la console : OSC entrant activé (UDP, adresse `/cmd`). Le plugin `AI_Index` s'installe depuis l'app (voir plus bas).
 
 ## Installation
 **Le plus simple : l'installateur** (aucun Python à installer)
@@ -61,6 +61,22 @@ Détails (données, création du `.exe`, tests) : voir [docs/README_BUREAU.md](d
   et vérifie toujours le résultat sur la console avant de jouer.
 - Ton historique de chat, tes réglages et le journal restent sur ton PC (dossier de configuration de l'app),
   jamais dans le dossier du projet.
+
+## Le plugin AI_Index
+Pour lire ton show, l'IA a besoin d'un petit plugin Lua dans grandMA3 : `plugin/ai_index.lua`.
+- **Ce qu'il fait :** à chaque Rescan, l'app le lance par OSC ; il écrit la liste de tes objets (macros, séquences,
+  groupes, presets…) dans `gma3_library\ai_index.json`, que l'IA lit ensuite. **Il ne modifie rien dans ton show.**
+- **Installation automatique** (assistant de premier lancement ou ⚙ Réglages → « Installer automatiquement ») :
+  1. l'app lance d'abord le plugin : s'il répond, il est déjà installé et rien n'est importé (pas de doublon).
+     S'il n'est pas encore là, la console affiche « Object not found » : c'est normal ;
+  2. sinon elle écrit `ai_index.xml` dans `gma3_library\datapools\plugins` ;
+  3. elle envoie `Import Plugin Library "ai_index.xml" At Plugin <n>` : le plugin arrive à l'emplacement choisi
+     (99 par défaut, modifiable à côté du bouton ; **il doit être vide** dans le pool Plugins) ;
+  4. elle le relance pour vérifier que l'index arrive.
+
+  grandMA3 doit être ouvert avec l'OSC activé. Le plugin fait ensuite partie de ton show : **enregistre le show** pour le garder.
+  Toutes les commandes envoyées sont visibles dans 📜 Journal.
+- **Installation à la main** (si besoin) : dans le pool Plugins de grandMA3, importe `plugin/ai_index.lua` et nomme-le `AI_Index`.
 
 ## Licence
 Code sous licence [MIT](LICENSE) : libre d'utilisation, de modification et de redistribution, en gardant la mention de copyright.

@@ -321,10 +321,51 @@ function blocOsc() {
 }
 function blocPlugin(p) {
   const l = (ok, t) => `<div>${ok ? "✅" : "❌"} ${t}</div>`;
-  return l(p.bibliotheque_ok, tr("Dossier de la bibliothèque trouvé", "Library folder found")) + l(p.plugin_ok, tr("Plugin <code>AI_Index</code> importé dans la console", "<code>AI_Index</code> plugin imported in the console")) +
-    l(p.index_ok, p.index_ok ? tr("Index déjà produit (il y a " + p.index_age_min + " min)", "Index already produced (" + p.index_age_min + " min ago)") : tr("Index pas encore produit (fais un Rescan quand la console tourne)", "Index not produced yet (run a Rescan while the console is running)")) +
-    (p.plugin_ok ? "" : `<div class="hint">${tr(`Pour l'importer : dans grandMA3, ouvre le pool des Plugins et importe le fichier <code>${esc(p.lua_source)}</code>, nomme-le <code>AI_Index</code>, puis relance la vérification. (Ce fichier est dans le dossier de l'application.)`,
-      `To import it: in grandMA3, open the Plugins pool and import the file <code>${esc(p.lua_source)}</code>, name it <code>AI_Index</code>, then check again. (This file is in the application folder.)`)}</div>`);
+  // L'index produit par le plugin est la seule preuve qu'il est installé et qu'il fonctionne.
+  return l(p.bibliotheque_ok, tr("Dossier de la bibliothèque trouvé", "Library folder found")) +
+    l(p.index_ok, p.index_ok ? tr("Le plugin fonctionne : index produit il y a " + p.index_age_min + " min", "The plugin works: index produced " + p.index_age_min + " min ago") : tr("Pas encore d'index : plugin absent du show, ou console fermée", "No index yet: plugin missing from the show, or console closed")) +
+    (p.index_ok ? "" : `<div class="hint">${tr(`Import à la main (si l'installation automatique échoue) : dans grandMA3, ouvre le pool Plugins, importe le fichier <code>${esc(p.lua_source)}</code>, nomme-le <code>AI_Index</code>, puis vérifie.`,
+      `Manual import (if the automatic installation fails): in grandMA3, open the Plugins pool, import the file <code>${esc(p.lua_source)}</code>, name it <code>AI_Index</code>, then check.`)}</div>`);
+}
+// Explication + bouton d'installation automatique (assistant et Réglages).
+function blocInstallPlugin(ouvert) {
+  return `<details class="hint"${ouvert ? " open" : ""} style="margin-top:10px"><summary style="cursor:pointer">${tr("ℹ️ Comment marche le plugin AI_Index ?", "ℹ️ How does the AI_Index plugin work?")}</summary>
+  ${tr(`<p><b>À quoi il sert :</b> AI_Index est un petit script Lua qui tourne dans grandMA3. À chaque Rescan, l'app lui demande d'écrire la liste de tes objets (macros, séquences, groupes, presets…) dans un fichier que l'IA lit ensuite. <b>Il ne modifie rien dans ton show.</b></p>
+  <p><b>Ce que fait « Installer automatiquement » :</b></p><ol style="margin:4px 0 6px 20px">
+  <li>l'app lance d'abord le plugin : s'il répond, il est déjà installé et elle s'arrête là (pas de doublon). S'il n'est pas encore là, la console affiche « Object not found » : <b>c'est normal</b> ;</li>
+  <li>sinon, elle écrit <code>ai_index.xml</code> dans la bibliothèque de la console (<code>gma3_library\\datapools\\plugins</code>) ;</li>
+  <li>elle envoie <code>Import Plugin Library "ai_index.xml" At Plugin …</code> : le plugin arrive, sous le nom AI_Index, à l'emplacement choisi ci-dessous dans ton pool Plugins (<b>il doit être vide</b>) ;</li>
+  <li>elle le relance pour vérifier que l'index arrive.</li></ol>
+  <p><b>À savoir :</b> grandMA3 doit être ouvert avec l'OSC activé ; ça prend jusqu'à 30 secondes ; le plugin fait ensuite partie de ton show, <b>enregistre le show</b> pour le garder ; chaque commande envoyée est visible dans 📜 Journal.</p>`,
+  `<p><b>What it does:</b> AI_Index is a small Lua script running inside grandMA3. On every Rescan, the app asks it to write the list of your objects (macros, sequences, groups, presets…) to a file that the AI then reads. <b>It does not change anything in your show.</b></p>
+  <p><b>What "Install automatically" does:</b></p><ol style="margin:4px 0 6px 20px">
+  <li>the app first runs the plugin: if it answers, it is already installed and the app stops there (no duplicate). If it is not there yet, the console shows "Object not found": <b>this is normal</b>;</li>
+  <li>otherwise, it writes <code>ai_index.xml</code> to the console library (<code>gma3_library\\datapools\\plugins</code>);</li>
+  <li>it sends <code>Import Plugin Library "ai_index.xml" At Plugin …</code>: the plugin lands, named AI_Index, in the slot chosen below in your Plugins pool (<b>it must be empty</b>);</li>
+  <li>it runs it again to check that the index arrives.</li></ol>
+  <p><b>Good to know:</b> grandMA3 must be open with OSC enabled; it takes up to 30 seconds; the plugin then becomes part of your show, <b>save the show</b> to keep it; every command sent is visible in 📜 Log.</p>`)}</details>
+  <div class="row"><div class="sm"><label>${tr("Emplacement libre dans le pool Plugins", "Empty slot in the Plugins pool")}</label><input id="plugEmp" type="number" min="1" max="9999" value="${R.reglages.plugin_emplacement}"></div></div>
+  <div class="acts2"><button class="btn pri" style="padding:7px 16px" id="bInstPlug">${tr("🔌 Installer automatiquement", "🔌 Install automatically")}</button></div><div class="hint" id="instEtat"></div>`;
+}
+function lierInstall() {
+  const b = $("bInstPlug"), libelle = b.textContent;
+  b.onclick = async () => {
+    b.disabled = true; b.textContent = tr("⏳ Installation… (jusqu'à 30 s)", "⏳ Installing… (up to 30 s)");
+    $("instEtat").innerHTML = tr("⏳ Test du plugin, puis import si besoin. Garde grandMA3 ouvert.", "⏳ Testing the plugin, then importing if needed. Keep grandMA3 open.");
+    try {
+      const r0 = await J("/reglages", "POST", { reglages: { plugin_emplacement: $("plugEmp").value, ...($("bib") ? { dossier_bibliotheque: $("bib").value } : {}) } });
+      if (!r0.ok) throw new Error(Object.values(r0.erreurs).join(" "));
+      R.reglages = r0.reglages;
+      const d = await J("/plugin/installer", "POST");
+      $("instEtat").innerHTML = `<div class="msg ${d.ok ? "ok" : "bad"}">${esc(d.message)}</div>` +
+        (d.etapes && d.etapes.length ? `<ol style="margin:6px 0 0 18px">${d.etapes.map(e => `<li>${esc(e)}</li>`).join("")}</ol>` : "");
+      R.plugin = await J("/reglages/plugin", "POST", { reglages: { dossier_bibliotheque: $("bib") ? $("bib").value : R.reglages.dossier_bibliotheque } });
+      $("plugEtat").innerHTML = blocPlugin(R.plugin);
+      refresh();
+    } catch (e) {
+      $("instEtat").innerHTML = `<div class="msg bad">${tr("Installation impossible : ", "Installation failed: ")}${esc(e.message || String(e))}</div>`;
+    } finally { b.disabled = false; b.textContent = libelle; }
+  };
 }
 function lierPlugin() {
   const b = $("bPlug"), libelle = b.textContent;
@@ -370,14 +411,14 @@ async function reglages() {
   <div class="hint">${tr("Avant de générer des macros ou d'agir sur une plage (Delete / Store / Copy / Move … Thru …), l'app envoie <code>SaveShow</code> : grandMA3 garde une copie datée dans Backup Shows (Menu › Backup › Load). 2 minutes minimum entre deux sauvegardes.",
     "Before generating macros or acting on a range (Delete / Store / Copy / Move … Thru …), the app sends <code>SaveShow</code>: grandMA3 keeps a dated copy in Backup Shows (Menu › Backup › Load). At least 2 minutes between two backups.")}</div>
   <label>${tr("Dossier gma3_library", "gma3_library folder")}</label><input id="bib" value="${esc(r.dossier_bibliotheque)}">
-  <div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier le plugin AI_Index", "Check the AI_Index plugin")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>
+  <div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier le plugin AI_Index", "Check the AI_Index plugin")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>${blocInstallPlugin(false)}
   <h4>${tr("Apparence et données", "Appearance and data")}</h4>
   ${blocLangue(r.langue)}
   <label>${tr("Thème", "Theme")}</label><select id="thm"><option value="sombre"${r.theme === "sombre" ? " selected" : ""}>${tr("Sombre", "Dark")}</option><option value="clair"${r.theme === "clair" ? " selected" : ""}>${tr("Clair", "Light")}</option></select>
   <div class="acts2"><button class="btn" id="bHist">${tr("🗑 Effacer l'historique du chat", "🗑 Clear chat history")}</button><button class="btn" id="bWiz">${tr("🧭 Relancer l'assistant", "🧭 Restart the setup wizard")}</button></div><div class="msg" id="gMsg"></div>
   <div class="foot"><span></span><div class="acts2" style="margin:0"><button class="btn" id="bClose">${tr("Fermer", "Close")}</button><button class="btn pri" style="padding:8px 22px" id="bSave">${tr("Enregistrer", "Save")}</button></div></div>`);
   lierCle(); lierOsc();
-  lierPlugin();
+  lierPlugin(); lierInstall();
   $("bHist").onclick = async () => { if (!confirm(tr("Effacer tout l'historique du chat ?", "Clear the whole chat history?"))) return; await fetch(API + "/history", { method: "DELETE" }); hist = []; $("msgs").innerHTML = ""; welcome(); say("gMsg", true, tr("Historique effacé.", "History cleared.")); };
   $("bWiz").onclick = assistant; $("bClose").onclick = fermer;
   $("bRaz").onclick = async () => { majCout(await J("/session/reinitialiser", "POST")); say("cMsg", true, tr("Compteur remis à zéro.", "Counter reset.")); };
@@ -398,7 +439,7 @@ async function assistant() {
     const corps = [
       blocLangue(R.reglages.langue) + `<div class="hint">${tr("Bienvenue ! Cette application pilote ta console grandMA3 avec une IA. Commençons par ta clé API Anthropic (à créer sur console.anthropic.com).", "Welcome! This application controls your grandMA3 console with AI. Let's start with your Anthropic API key (create one at console.anthropic.com).")}</div>` + blocCle(),
       `<div class="hint">${tr("Indique où se trouve ta console. Si grandMA3 onPC tourne sur ce PC, garde les valeurs par défaut.", "Tell the app where your console is. If grandMA3 onPC runs on this PC, keep the default values.")}</div>` + blocOsc(),
-      `<div class="hint">${tr("Le plugin <code>AI_Index</code> permet à l'IA de lire ton showfile.", "The <code>AI_Index</code> plugin lets the AI read your showfile.")}</div><label>${tr("Dossier gma3_library", "gma3_library folder")}</label><input id="bib" value="${esc(R.reglages.dossier_bibliotheque)}"><div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier", "Check")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>`][n];
+      `<div class="hint">${tr("Le plugin <code>AI_Index</code> permet à l'IA de lire ton showfile.", "The <code>AI_Index</code> plugin lets the AI read your showfile.")}</div><label>${tr("Dossier gma3_library", "gma3_library folder")}</label><input id="bib" value="${esc(R.reglages.dossier_bibliotheque)}"><div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier", "Check")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>${blocInstallPlugin(true)}`][n];
     ouvrir(`<h2>${tr("🧭 Premier lancement", "🧭 First launch")} — ${ETAPES[n]}</h2><div class="steps">${tr(`Étape ${n + 1} sur 3`, `Step ${n + 1} of 3`)}</div>${corps}
     <div class="foot"><button class="btn" id="bSkip">${n ? tr("← Retour", "← Back") : tr("Passer", "Skip")}</button><button class="btn pri" style="padding:8px 22px" id="bNext">${n < 2 ? tr("Suivant →", "Next →") : tr("Terminer", "Finish")}</button></div>`);
     if (n === 0) {
@@ -407,7 +448,7 @@ async function assistant() {
       $("lng").onchange = async () => { const d = await J("/reglages", "POST", { reglages: { langue: $("lng").value } }); if (d.ok) { R = await J("/reglages"); LANG = R.langue; textesFixes(); rendre(); } };
     }
     if (n === 1) lierOsc();
-    if (n === 2) lierPlugin();
+    if (n === 2) { lierPlugin(); lierInstall(); }
     $("bSkip").onclick = () => n ? (n--, rendre()) : (J("/reglages", "POST", { reglages: { premier_lancement_fait: true } }), fermer());
     $("bNext").onclick = async () => {
       if (n === 1) { const d = await sauver(); if (!d.ok) return say("oscMsg", false, Object.values(d.erreurs).join(" ")); R.reglages = d.reglages; }
