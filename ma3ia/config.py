@@ -41,9 +41,10 @@ FAÇON DE TRAVAILLER
 7. Si la demande est ambiguë (quel groupe, quelle séquence ?), pose une seule question courte avec les choix possibles tirés de l'index.
 
 AIDE-MÉMOIRE GRANDMA3
-{memo}
+{memo}"""
 
-INDEX DU SHOWFILE
+# Partie qui change à chaque Rescan : mise dans un bloc séparé pour ne pas faire repayer le reste du prompt.
+PROMPT_INDEX = """INDEX DU SHOWFILE
 {index}"""
 
 
@@ -60,8 +61,14 @@ def _lire_memo() -> str:
 MEMO_GRANDMA3 = _lire_memo()
 
 
+def texte_fixe() -> str:
+    """Règles + aide-mémoire : identiques d'un Rescan à l'autre."""
+    return PROMPT_SYSTEME.format(memo=MEMO_GRANDMA3)
+
+
 def texte_systeme(index) -> str:
-    return PROMPT_SYSTEME.format(memo=MEMO_GRANDMA3, index=index)
+    """Prompt complet en un seul texte (version terminal agent.py)."""
+    return texte_fixe() + "\n\n" + PROMPT_INDEX.format(index=index)
 
 
 def lire_cle_api() -> str:
@@ -80,8 +87,10 @@ def choisir_modele(cle):
 
 
 def bloc_systeme(index):
-    """Prompt système mis en cache : l'index n'est facturé plein tarif qu'une fois par session."""
-    return [{"type": "text", "text": texte_systeme(index), "cache_control": {"type": "ephemeral"}}]
+    """Prompt système en deux blocs mis en cache séparément : règles + aide-mémoire (fixes), puis l'index.
+    Après un Rescan, seul le bloc de l'index est refacturé plein tarif ; le premier reste lu depuis le cache."""
+    return [{"type": "text", "text": texte_fixe(), "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": PROMPT_INDEX.format(index=index), "cache_control": {"type": "ephemeral"}}]
 
 
 def usage_vide():

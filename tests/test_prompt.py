@@ -10,8 +10,12 @@ def test_prompt_contient_memo_et_index():
 
 
 def test_bloc_systeme_mis_en_cache():
-    bloc = config.bloc_systeme("index")
-    assert bloc[0]["cache_control"] == {"type": "ephemeral"}
+    blocs = config.bloc_systeme("SECTION MACROS : 1=\"A\"")
+    assert len(blocs) == 2 and all(b["cache_control"] == {"type": "ephemeral"} for b in blocs)
+    assert "AIDE-MÉMOIRE" in blocs[0]["text"] and "INDEX" not in blocs[0]["text"]
+    assert blocs[1]["text"].startswith("INDEX DU SHOWFILE") and '1="A"' in blocs[1]["text"]
+    # Le bloc fixe ne dépend pas de l'index : il reste en cache après un Rescan.
+    assert config.bloc_systeme("autre index")[0]["text"] == blocs[0]["text"]
 
 
 def test_limiter_historique():
