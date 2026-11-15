@@ -9,6 +9,8 @@ import re
 import urllib.request
 from html.parser import HTMLParser
 
+from i18n import tr
+
 VERSION_MANUEL = "2.5"
 BASE = f"https://help.malighting.com/grandMA3/{VERSION_MANUEL}/HTML/"
 PAGE_INDEX = "csk_general_keywords.html"
@@ -140,15 +142,15 @@ def _nettoyer(texte: str) -> str:
 
 def doc_grandma3(mot_cle: str = "") -> str:
     if not mot_cle or not mot_cle.strip():
-        return "Indique un mot-clé grandMA3 (ex : Store, Assign, Go+, MAtricks) ou 'syntaxe' / 'options'."
+        return tr("Indique un mot-clé grandMA3 (ex : Store, Assign, Go+, MAtricks) ou 'syntaxe' / 'options'.", "Give a grandMA3 keyword (e.g. Store, Assign, Go+, MAtricks) or 'syntaxe' / 'options'.")
     try:
         page, proches = trouver_page(mot_cle, _mots_cles())
         if page is None:
-            aide = f" Mots-clés proches : {', '.join(proches)}." if proches else ""
-            return f"Aucune page du manuel pour '{mot_cle}'.{aide}"
+            aide = tr(" Mots-clés proches : ", " Close keywords: ") + ", ".join(proches) + "." if proches else ""
+            return tr(f"Aucune page du manuel pour '{mot_cle}'.", f"No manual page for '{mot_cle}'.") + aide
         texte = _nettoyer(_page(page))
     except OSError as e:
-        return f"Erreur : manuel grandMA3 inaccessible (pas d'internet ?) : {e}"
+        return tr(f"Erreur : manuel grandMA3 inaccessible (pas d'internet ?) : {e}", f"Error: grandMA3 manual unreachable (no Internet?): {e}")
     if len(texte) > TAILLE_MAX:
-        texte = texte[:TAILLE_MAX] + "\n... [page coupée : la syntaxe et les exemples principaux sont au-dessus]"
-    return f"(Manuel officiel grandMA3 {VERSION_MANUEL})\n{texte}"
+        texte = texte[:TAILLE_MAX] + "\n... " + tr("[page coupée : la syntaxe et les exemples principaux sont au-dessus]", "[page cut: the syntax and main examples are above]")
+    return tr("(Manuel officiel grandMA3 ", "(Official grandMA3 manual ") + f"{VERSION_MANUEL})\n{texte}"

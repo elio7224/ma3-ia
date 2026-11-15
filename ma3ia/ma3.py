@@ -1,6 +1,7 @@
 from pythonosc.udp_client import SimpleUDPClient
 
 import journal
+from i18n import tr
 
 
 class MA3:
@@ -11,4 +12,4 @@ class MA3:
     def send(self, cmd: str) -> str:
         self.client.send_message("/cmd", cmd)
         journal.noter(cmd, self.cible)
-        return "envoyé"
+        return tr("envoyé", "sent")

@@ -47,3 +47,13 @@ def test_desactivable(console):
     r = tools.run_command("Delete Macro 1 Thru 5")
     assert "SaveShow" not in console and "désactivée" in r
     assert reglages.enregistrer({"sauvegarde_auto": "true"})[0]["sauvegarde_auto"] is True
+
+
+def test_resultats_traduits_en_anglais(console, monkeypatch):
+    monkeypatch.setenv("MA3IA_LANGUE", "en")
+    assert tools.create_macro(5, "Test", ["ClearAll"]) == "Macro 5 created (1 lines)."
+    assert "Show saved" in tools.run_command("Delete Group 1 Thru 3")
+    import ma3
+    client = ma3.MA3("127.0.0.1", 9)
+    monkeypatch.setattr(client, "client", type("U", (), {"send_message": lambda self, a, c: None})())
+    assert client.send("Go+ Sequence 1") == "sent"
