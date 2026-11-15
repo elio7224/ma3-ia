@@ -8,6 +8,7 @@ import operator
 import xml.etree.ElementTree as ET
 from itertools import product
 from ma3 import MA3
+import ma3 as osc
 from i18n import tr
 
 ma3 = MA3()
@@ -51,6 +52,7 @@ MOTS_CLES_MA3 = {
 }
 
 INDEX_OBJETS = {}
+VERSION_PLUGIN_CONSOLE = None   # version du plugin qui a produit l'index (1 = ancien, sans le champ)
 AUTRES_POOLS = []            
 
 
@@ -145,8 +147,9 @@ def _cle_tri(numero: str):
 
 
 def charger_contexte_temp() -> str:
-    global INDEX_OBJETS, AUTRES_POOLS
+    global INDEX_OBJETS, AUTRES_POOLS, VERSION_PLUGIN_CONSOLE
     INDEX_OBJETS, AUTRES_POOLS = {}, []
+    VERSION_PLUGIN_CONSOLE = None
 
     fichier = _fichier_index()
     if not os.path.exists(fichier):
@@ -156,6 +159,7 @@ def charger_contexte_temp() -> str:
             data = json.load(f)
     except (ValueError, OSError) as e:
         return f"INDEX ILLISIBLE ({e})."
+    VERSION_PLUGIN_CONSOLE = data.get("plugin", 1)
 
     sans_numero = 0
     for pool in data.get("pools", []):
@@ -354,11 +358,11 @@ def _decouper(texte: str, taille: int = TAILLE_PARTIE) -> list:
 
 def lire_xml_temp(nom_objet: str = "", partie: int = 1) -> str:
     if not nom_objet or not nom_objet.strip():
-        return "Aucun objet spécifié pour la lecture."
+        return tr("Aucun objet spécifié pour la lecture.", "No object given to read.")
     if not INDEX_OBJETS:
         charger_contexte_temp()
     if not INDEX_OBJETS:
-        return "Index indisponible."
+        return tr("Index indisponible.", "Index unavailable.")
 
     sections_connues = list(MOTS_CLES_MA3)
     requete = nom_objet.strip().lower()
@@ -375,7 +379,7 @@ def lire_xml_temp(nom_objet: str = "", partie: int = 1) -> str:
     if section_txt:
         section = _section_depuis(section_txt, sections_connues)
         if not section:
-            return f"Section '{section_txt}' inconnue."
+            return tr(f"Section '{section_txt}' inconnue.", f"Unknown section '{section_txt}'.")
     sections = [section] if section else sections_connues
 
     trouves = []   
@@ -394,34 +398,36 @@ def lire_xml_temp(nom_objet: str = "", partie: int = 1) -> str:
         trouves = exacts or partiels
 
     if not trouves:
-        return f"Aucun objet '{nom_objet}' trouvé."
+        return tr(f"Aucun objet '{nom_objet}' trouvé.", f"No object '{nom_objet}' found.")
     if len(trouves) > 1:
         liste = "\n".join(f'- {s}/{n} ("{nom}")' for s, n, nom in trouves[:30])
-        return f"Plusieurs objets correspondent :\n{liste}"
+        return tr("Plusieurs objets correspondent :", "Several objects match:") + f"\n{liste}"
 
     s, numero, nom = trouves[0]
     chemin = _exporter_objet(s, numero)
     if chemin is None:
-        return f"L'export de {s}/{numero} n'a pas produit de fichier."
+        return tr(f"L'export de {s}/{numero} n'a pas produit de fichier.", f"Exporting {s}/{numero} produced no file.")
     try:
         contenu = compacter_xml(chemin)
     except Exception as e:
-        return f"Erreur de lecture : {e}"
+        return tr(f"Erreur de lecture : {e}", f"Read error: {e}")
     parties = _decouper(contenu, TAILLE_PARTIE)
     try:
         partie = int(partie)
     except (TypeError, ValueError):
         partie = 1
     if not 1 <= partie <= len(parties):
-        return f"Partie {partie} inexistante : {s}/{numero} a {len(parties)} partie(s)."
+        return tr(f"Partie {partie} inexistante : {s}/{numero} a {len(parties)} partie(s).", f"Part {partie} does not exist: {s}/{numero} has {len(parties)} part(s).")
     entete = f'--- {s}/{numero} « {nom} » (format compact'
     if len(parties) > 1:
         entete += f", partie {partie}/{len(parties)}"
     entete += ") ---"
     texte = f"{entete}\n{parties[partie - 1]}"
     if partie < len(parties):
-        texte += (f"\n... [Suite : partie {partie + 1}/{len(parties)}. Si la réponse en dépend, rappelle "
-                  f"lire_xml_temp avec partie={partie + 1} toi-même, sans demander à l'utilisateur]")
+        texte += "\n... " + tr(f"[Suite : partie {partie + 1}/{len(parties)}. Si la réponse en dépend, rappelle "
+                                f"lire_xml_temp avec partie={partie + 1} toi-même, sans demander à l'utilisateur]",
+                                f"[Continued: part {partie + 1}/{len(parties)}. If the answer depends on it, call "
+                                f"lire_xml_temp with partie={partie + 1} yourself, without asking the user]")
     return texte
 
 
@@ -437,7 +443,7 @@ def create_macro(number: int = 1, name: str = "Macro Sans Nom", lines: list[str]
     cmds.append(f'Label Macro {number} "{name}"')
     for c in cmds:
         ma3.send(c)
-    return f"Macro {number} créée avec succès ({len(lines)} lignes)."
+    return tr(f"Macro {number} créée avec succès ({len(lines)} lignes).", f"Macro {number} created ({len(lines)} lines).")
 
 
 def configure_matricks(number: int = 1, name: str = "MAtricks", xgroup: int = None, xblock: int = None, xwings: int = None, interleave: int = None) -> str:
@@ -455,7 +461,7 @@ def configure_matricks(number: int = 1, name: str = "MAtricks", xgroup: int = No
         
     for c in cmds:
         ma3.send(c)
-    return f"MAtricks {number} ('{name}') configuré avec succès."
+    return tr(f"MAtricks {number} ('{name}') configuré avec succès.", f"MAtricks {number} ('{name}') configured.")
 
 
 # ----------------------------------------------------------------------
@@ -481,19 +487,26 @@ def sauvegarder_avant_masse() -> str:
     except Exception:
         actif = True
     if not actif:
-        return "(Sauvegarde automatique désactivée dans les Réglages : aucune copie faite.)"
+        return tr("(Sauvegarde automatique désactivée dans les Réglages : aucune copie faite.)", "(Automatic backup turned off in Settings: no copy made.)")
     if time.time() - _derniere_sauvegarde[0] < SAUVEGARDE_INTERVALLE_S:
-        return "(Show déjà sauvegardé il y a moins de 2 minutes : pas de nouvelle copie.)"
+        return tr("(Show déjà sauvegardé il y a moins de 2 minutes : pas de nouvelle copie.)", "(Show already saved less than 2 minutes ago: no new copy.)")
+    if osc.en_capture():
+        # Mode validation : SaveShow part en premier quand l'utilisateur valide (horodaté à l'envoi réel).
+        ma3.send("SaveShow")
+        return tr("💾 SaveShow sera envoyé en premier, avant l'action, quand l'utilisateur validera.",
+                  "💾 SaveShow will be sent first, before the action, once the user approves.")
     ma3.send("SaveShow")
     _derniere_sauvegarde[0] = time.time()
     time.sleep(1.0)                    # laisse la console écrire le fichier avant la suite
-    return ("💾 Show sauvegardé (SaveShow) avant l'action : grandMA3 garde une copie datée dans Backup Shows "
-            "(Menu > Backup > Load > Backup Shows pour revenir en arrière).")
+    return tr("💾 Show sauvegardé (SaveShow) avant l'action : grandMA3 garde une copie datée dans Backup Shows "
+              "(Menu > Backup > Load > Backup Shows pour revenir en arrière).",
+              "💾 Show saved (SaveShow) before the action: grandMA3 keeps a dated copy in Backup Shows "
+              "(Menu > Backup > Load > Backup Shows to go back).")
 
 
 def run_command(cmd: str = "") -> str:
     if not cmd:
-        return "Aucune commande fournie."
+        return tr("Aucune commande fournie.", "No command given.")
     if est_commande_de_masse(cmd):
         note = sauvegarder_avant_masse()
         return f"{note}\n{ma3.send(cmd)}"
@@ -517,7 +530,7 @@ def generate_fx_grid(start_macro: int = 1, group_start: int = 1, group_count: in
             create_macro(current_macro, macro_name, lines)
             current_macro += 1
             total_created += 1
-    return f"{note}\nSuccès ! {total_created} macros générées."
+    return f"{note}\n" + tr(f"Succès ! {total_created} macros générées.", f"Done: {total_created} macros generated.")
 
 
 MAX_MACROS_PAR_APPEL = 1000
@@ -583,23 +596,23 @@ def generate_macros_from_template(start_macro: int = 1, name_template: str = "Ma
                                   macro_step: int = 1, dry_run: bool = False,
                                   delai_ms: int = 10) -> str:
     if not line_templates:
-        return "Erreur : line_templates est vide."
+        return tr("Erreur : line_templates est vide.", "Error: line_templates is empty.")
     loops = loops or []
 
     noms = [b.get("var") for b in loops]
     if any(not n for n in noms) or len(set(noms)) != len(noms):
-        return "Erreur : chaque boucle doit avoir un 'var' unique."
+        return tr("Erreur : chaque boucle doit avoir un 'var' unique.", "Error: each loop needs a unique 'var'.")
     if any(n in ("macro", "idx") for n in noms):
-        return "Erreur : 'macro' et 'idx' sont réservés."
+        return tr("Erreur : 'macro' et 'idx' sont réservés.", "Error: 'macro' and 'idx' are reserved.")
     try:
         listes = [_valeurs_boucle(b) for b in loops]
     except Exception as e:
-        return f"Erreur dans les boucles : {e}"
+        return tr(f"Erreur dans les boucles : {e}", f"Error in the loops: {e}")
     combinaisons = list(product(*listes)) if listes else [()]
 
     total = len(combinaisons)
     if total > MAX_MACROS_PAR_APPEL:
-        return f"Refusé : {total} macros demandées, maximum {MAX_MACROS_PAR_APPEL}."
+        return tr(f"Refusé : {total} macros demandées, maximum {MAX_MACROS_PAR_APPEL}.", f"Refused: {total} macros requested, maximum {MAX_MACROS_PAR_APPEL}.")
 
     macros = []
     try:
@@ -611,26 +624,26 @@ def generate_macros_from_template(start_macro: int = 1, name_template: str = "Ma
             lignes = [_rendre(t, variables) for t in line_templates]
             for l in lignes + [nom]:
                 if '"' in l:
-                    return f"Erreur : guillemets doubles interdits : {l}."
+                    return tr(f"Erreur : guillemets doubles interdits : {l}.", f"Error: double quotes are not allowed: {l}.")
             macros.append((variables["macro"], nom, lignes))
     except Exception as e:
-        return f"Erreur de modèle : {e}"
+        return tr(f"Erreur de modèle : {e}", f"Template error: {e}")
 
     premier, dernier = macros[0][0], macros[-1][0]
     if dry_run:
         apercu = []
         for num, nom, lignes in macros[:3] + (macros[-1:] if total > 3 else []):
             apercu.append(f"Macro {num} « {nom} » :\n" + "\n".join(f"    {i}. {l}" for i, l in enumerate(lignes, 1)))
-        return f"APERÇU : {total} macros, numéros {premier} à {dernier}.\n\n" + "\n\n".join(apercu)
+        return tr(f"APERÇU : {total} macros, numéros {premier} à {dernier}.", f"PREVIEW: {total} macros, numbers {premier} to {dernier}.") + "\n\n" + "\n\n".join(apercu)
 
     note = sauvegarder_avant_masse()
     delai = max(0, delai_ms) / 1000.0
     for num, nom, lignes in macros:
         for c in _commandes_macro(num, nom, lignes):
             ma3.send(c)
-            if delai:
+            if delai and not osc.en_capture():
                 time.sleep(delai)
-    return f"{note}\nSuccès : {total} macros envoyées, numéros {premier} à {dernier}."
+    return f"{note}\n" + tr(f"Succès : {total} macros envoyées, numéros {premier} à {dernier}.", f"Done: {total} macros sent, numbers {premier} to {dernier}.")
 
 
 def nettoyer_macros_existantes(start_macro: int, end_macro: int) -> str:
@@ -658,4 +671,4 @@ def nettoyer_macros_existantes(start_macro: int, end_macro: int) -> str:
         except Exception as e:
             print(f"Erreur nettoyage macro {num} : {e}")
             
-    return f"Succès : {nettoyees} macros nettoyées."
+    return tr(f"Succès : {nettoyees} macros nettoyées.", f"Done: {nettoyees} macros cleaned.")

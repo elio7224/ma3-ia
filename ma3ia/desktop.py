@@ -92,6 +92,12 @@ class ApiFenetre:
         if self._fenetre is not None:
             colorer_barre_titre(self._fenetre, theme)
 
+    def ouvrir_lien(self, url):
+        """Ouvre un lien dans le navigateur par défaut (seulement les pages GitHub du projet)."""
+        if str(url).startswith("https://github.com/elio7224/ma3-ia"):
+            import webbrowser
+            webbrowser.open(url)
+
 
 def main():
     import webview

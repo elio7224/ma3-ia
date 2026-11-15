@@ -15,7 +15,8 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;fl
 .brand b{background:linear-gradient(90deg,#fff,var(--ac3));-webkit-background-clip:text;background-clip:text;color:transparent}
 .badge{background:var(--yl);color:#000;font-weight:800;font-size:.66rem;padding:2px 7px;border-radius:5px}
 .hr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.chip{display:flex;align-items:center;gap:8px;font-size:.78rem;background:var(--bg3);border:1px solid var(--bd);padding:6px 13px;border-radius:20px;color:var(--mu);transition:.2s}
+#st{max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.chip{display:flex;align-items:center;gap:8px;font-size:.78rem;white-space:nowrap;background:var(--bg3);border:1px solid var(--bd);padding:6px 13px;border-radius:20px;color:var(--mu);transition:.2s}
 .chip.tot{color:var(--tx);font-variant-numeric:tabular-nums}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--mu);flex:none}.dot.ok{background:var(--ok);box-shadow:0 0 9px var(--ok)}.dot.warn{background:var(--yl);box-shadow:0 0 9px var(--yl)}.dot.bad{background:var(--bad);box-shadow:0 0 9px var(--bad)}
 .btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bd);padding:7px 13px;border-radius:10px;font-size:.8rem;font-weight:600;cursor:pointer;transition:.15s}
@@ -79,6 +80,9 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
   <div class="hr">
     <span class="chip"><i id="dot" class="dot"></i><span id="st">Connexion…</span></span>
     <select id="modele" class="btn" title="Modèle de l'IA"><option value="haiku">Haiku 5.5 · économique</option><option value="sonnet">Sonnet 5.5 · plus puissant</option></select>
+    <a class="chip" id="modeVal" href="#" style="display:none;color:var(--ac3);border-color:var(--ac);text-decoration:none"></a>
+    <a class="chip" id="plugMaj" href="#" style="display:none;color:var(--yl);border-color:var(--yl);text-decoration:none"></a>
+    <a class="chip" id="maj" href="#" style="display:none;color:var(--yl);border-color:var(--yl);text-decoration:none"></a>
     <span class="chip tot" id="cout" title="Coût estimé depuis le lancement de l'app, et plafond (⚙ Réglages)">Session : ≈ 0,000 $</span>
     <button id="bRescan" class="btn">🔄 Rescan</button>
     <button id="bNew" class="btn">🗑 Nouvelle conversation</button>
@@ -196,6 +200,28 @@ function addCout(u) {
     `${u.modele} · ${nb(entree)} input tokens (${nb(u.cache_read)} cached) · ${nb(u.output)} output · ≈ ${usd(u.cout_usd, 4)} $`);
   $("msgs").appendChild(d); scroll();
 }
+// Mode validation : carte listant les commandes préparées, avec Envoyer / Annuler.
+function carteAttente(a) {
+  const d = document.createElement("div"); d.className = "attente";
+  d.style.cssText = "margin:-4px 0 0 44px;border:1px solid var(--ac);border-radius:12px;padding:12px 14px;background:var(--bg2)";
+  d.innerHTML = `<div class="titre" style="font-weight:600;margin-bottom:6px">${tr(`⏸ ${a.commandes.length} commande(s) prête(s) — pas encore envoyée(s)`, `⏸ ${a.commandes.length} command(s) ready — not sent yet`)} <span class="tag" style="margin-left:6px">${esc(a.outil)}</span></div>
+    <pre style="max-height:220px;overflow:auto;margin:0 0 10px;font-size:.8rem;font-family:ui-monospace,Consolas,monospace">${esc(a.commandes.join("\n"))}</pre>
+    <div class="acts2" style="margin:0"><button class="btn pri" style="padding:7px 16px">${tr("✅ Envoyer à la console", "✅ Send to the console")}</button><button class="btn">${tr("✖ Annuler", "✖ Cancel")}</button></div>
+    <div class="msg"></div>`;
+  const [bOk, bNon] = d.querySelectorAll("button"), msg = d.querySelector(".msg");
+  const fin = (ok, texte, envoye) => {
+    d.querySelector(".acts2").remove(); msg.className = "msg " + (ok ? "ok" : "bad"); msg.textContent = texte;
+    d.querySelector(".titre").firstChild.textContent = envoye ? tr(`✅ ${a.commandes.length} commande(s) envoyée(s) `, `✅ ${a.commandes.length} command(s) sent `) : tr(`✖ ${a.commandes.length} commande(s) non envoyée(s) `, `✖ ${a.commandes.length} command(s) not sent `);
+    d.style.borderColor = "var(--bd)";
+  };
+  bOk.onclick = async () => {
+    bOk.disabled = bNon.disabled = true;
+    const r = await J(`/attente/${a.id}/envoyer`, "POST");
+    fin(r.ok, r.message + (r.ok ? " " + new Date().toLocaleTimeString(LANG === "en" ? "en-GB" : "fr-FR") : ""), r.ok);
+  };
+  bNon.onclick = async () => { bOk.disabled = bNon.disabled = true; const r = await J(`/attente/${a.id}/annuler`, "POST"); fin(false, r.message, false); };
+  $("msgs").appendChild(d); scroll();
+}
 function welcome() {
   addMsg("assistant", tr("## Bonjour 👋\nL'agent grandMA3 est prêt. Voici quelques idées pour commencer :",
     "## Hello 👋\nThe grandMA3 agent is ready. Here are a few ideas to get started:"));
@@ -211,9 +237,27 @@ async function refresh() {
     const d = await (await fetch(API + "/status")).json();
     const noms = LANG === "en" ? {} : { groups: "groupes", sequences: "séquences" };
     const parts = Object.entries(d.counts || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${noms[k] || k}`);
-    $("st").textContent = parts.length ? tr("Index : ", "Index: ") + parts.join(" · ") : tr("Index vide : plugin AI_Index ? (puis Rescan)", "Empty index: AI_Index plugin? (then Rescan)");
+    // En-tête court (total) ; le détail par type s'affiche au survol.
+    const total = Object.values(d.counts || {}).reduce((a, n) => a + n, 0);
+    $("st").textContent = parts.length ? tr(`Index : ${nb(total)} objets`, `Index: ${nb(total)} objects`) : tr("Index vide : plugin AI_Index ? (puis Rescan)", "Empty index: AI_Index plugin? (then Rescan)");
+    $("st").parentElement.title = parts.length ? parts.join("\n") : "";
     $("dot").className = "dot " + (parts.length ? "ok" : "warn");
     if (d.session) majCout(d.session);
+    // Mode validation actif : pastille qui le rappelle (clic = Réglages).
+    const mv = $("modeVal");
+    mv.style.display = d.validation ? "" : "none";
+    mv.textContent = tr("⏸ Mode validation", "⏸ Approval mode");
+    mv.title = tr("Les commandes de l'IA attendent ta validation avant d'être envoyées. Clique pour changer.", "The AI's commands wait for your approval before being sent. Click to change.");
+    mv.onclick = e => { e.preventDefault(); reglages(); };
+    // Ancienne version du plugin dans la console : pastille qui ouvre les Réglages.
+    const pm = $("plugMaj"), p = d.plugin || {};
+    if (p.a_mettre_a_jour) {
+      pm.textContent = tr("🔌 Plugin à mettre à jour", "🔌 Plugin update available");
+      pm.title = tr(`Plugin AI_Index version ${p.console} dans la console, version ${p.attendue} disponible. Clique pour l'installer.`,
+        `AI_Index plugin version ${p.console} in the console, version ${p.attendue} available. Click to install it.`);
+      pm.onclick = e => { e.preventDefault(); reglages(); };
+      pm.style.display = "";
+    } else pm.style.display = "none";
   } catch (e) { $("st").textContent = tr("Serveur injoignable", "Server unreachable"); $("dot").className = "dot bad"; }
 }
 async function send(txt) {
@@ -228,6 +272,7 @@ async function send(txt) {
     const d = await r.json(); t.remove();
     if (d.messages) hist = d.messages;
     addMsg("assistant", d.response || tr("(réponse vide)", "(empty response)"));
+    (d.en_attente || []).forEach(carteAttente);
     if (d.usage) addCout(d.usage);
     if (d.session) majCout(d.session);
     if (d.actions && d.actions.length) d.actions.forEach(addAct);
@@ -332,20 +377,20 @@ function blocInstallPlugin(ouvert) {
   return `<details class="hint"${ouvert ? " open" : ""} style="margin-top:10px"><summary style="cursor:pointer">${tr("ℹ️ Comment marche le plugin AI_Index ?", "ℹ️ How does the AI_Index plugin work?")}</summary>
   ${tr(`<p><b>À quoi il sert :</b> AI_Index est un petit script Lua qui tourne dans grandMA3. À chaque Rescan, l'app lui demande d'écrire la liste de tes objets (macros, séquences, groupes, presets…) dans un fichier que l'IA lit ensuite. <b>Il ne modifie rien dans ton show.</b></p>
   <p><b>Ce que fait « Installer automatiquement » :</b></p><ol style="margin:4px 0 6px 20px">
-  <li>l'app lance d'abord le plugin : s'il répond, il est déjà installé et elle s'arrête là (pas de doublon). S'il n'est pas encore là, la console affiche « Object not found » : <b>c'est normal</b> ;</li>
+  <li>l'app lance d'abord le plugin : s'il répond et qu'il est à jour, elle s'arrête là (pas de doublon). S'il n'est pas encore là, la console affiche « Object not found » : <b>c'est normal</b>. Si c'est une <b>ancienne version</b>, elle la supprime (<code>Delete Plugin "AI_Index"</code>) pour la remplacer ;</li>
   <li>sinon, elle écrit <code>ai_index.xml</code> dans la bibliothèque de la console (<code>gma3_library\\datapools\\plugins</code>) ;</li>
   <li>elle envoie <code>Import Plugin Library "ai_index.xml" At Plugin …</code> : le plugin arrive, sous le nom AI_Index, à l'emplacement choisi ci-dessous dans ton pool Plugins (<b>il doit être vide</b>) ;</li>
   <li>elle le relance pour vérifier que l'index arrive.</li></ol>
   <p><b>À savoir :</b> grandMA3 doit être ouvert avec l'OSC activé ; ça prend jusqu'à 30 secondes ; le plugin fait ensuite partie de ton show, <b>enregistre le show</b> pour le garder ; chaque commande envoyée est visible dans 📜 Journal.</p>`,
   `<p><b>What it does:</b> AI_Index is a small Lua script running inside grandMA3. On every Rescan, the app asks it to write the list of your objects (macros, sequences, groups, presets…) to a file that the AI then reads. <b>It does not change anything in your show.</b></p>
   <p><b>What "Install automatically" does:</b></p><ol style="margin:4px 0 6px 20px">
-  <li>the app first runs the plugin: if it answers, it is already installed and the app stops there (no duplicate). If it is not there yet, the console shows "Object not found": <b>this is normal</b>;</li>
+  <li>the app first runs the plugin: if it answers and is up to date, the app stops there (no duplicate). If it is not there yet, the console shows "Object not found": <b>this is normal</b>. If it is an <b>older version</b>, the app deletes it (<code>Delete Plugin "AI_Index"</code>) to replace it;</li>
   <li>otherwise, it writes <code>ai_index.xml</code> to the console library (<code>gma3_library\\datapools\\plugins</code>);</li>
   <li>it sends <code>Import Plugin Library "ai_index.xml" At Plugin …</code>: the plugin lands, named AI_Index, in the slot chosen below in your Plugins pool (<b>it must be empty</b>);</li>
   <li>it runs it again to check that the index arrives.</li></ol>
   <p><b>Good to know:</b> grandMA3 must be open with OSC enabled; it takes up to 30 seconds; the plugin then becomes part of your show, <b>save the show</b> to keep it; every command sent is visible in 📜 Log.</p>`)}</details>
   <div class="row"><div class="sm"><label>${tr("Emplacement libre dans le pool Plugins", "Empty slot in the Plugins pool")}</label><input id="plugEmp" type="number" min="1" max="9999" value="${R.reglages.plugin_emplacement}"></div></div>
-  <div class="acts2"><button class="btn pri" style="padding:7px 16px" id="bInstPlug">${tr("🔌 Installer automatiquement", "🔌 Install automatically")}</button></div><div class="hint" id="instEtat"></div>`;
+  <div class="acts2"><button class="btn pri" style="padding:7px 16px" id="bInstPlug">${tr("🔌 Installer / mettre à jour", "🔌 Install / update")}</button></div><div class="hint" id="instEtat"></div>`;
 }
 function lierInstall() {
   const b = $("bInstPlug"), libelle = b.textContent;
@@ -407,6 +452,9 @@ async function reglages() {
   <div class="hint">${tr(`Dépensé depuis le lancement : ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Alerte à 80 %, nouvelles demandes bloquées au plafond.`, `Spent since launch: ≈ ${usd(session ? session.cout_usd : 0, 3)} $. Warning at 80%, new requests blocked at the limit.`)}</div>
   <div class="acts2"><button class="btn" id="bRaz">${tr("Remettre le compteur à zéro", "Reset the counter")}</button></div><div class="msg" id="cMsg"></div>
   <h4>${tr("Console grandMA3", "grandMA3 console")}</h4>${blocOsc()}
+  <label>${tr("Mode validation (je valide avant l'envoi)", "Approval mode (I approve before sending)")}</label><select id="valid"><option value="false"${r.validation_manuelle ? "" : " selected"}>${tr("Désactivé : l'IA envoie directement", "Off: the AI sends directly")}</option><option value="true"${r.validation_manuelle ? " selected" : ""}>${tr("Activé : je vérifie puis je clique sur Envoyer", "On: I check, then click Send")}</option></select>
+  <div class="hint">${tr("Activé, l'IA prépare les commandes (macros, commandes, générations…) sans les envoyer : elles s'affichent dans le chat avec « Envoyer » et « Annuler ». Idéal en répétition. La lecture du show n'est pas concernée.",
+    "When on, the AI prepares the commands (macros, commands, generations…) without sending them: they show in the chat with \"Send\" and \"Cancel\". Ideal in rehearsal. Reading the show is not affected.")}</div>
   <label>${tr("Sauvegarde automatique avant les actions de masse", "Automatic backup before bulk actions")}</label><select id="sauv"><option value="true"${r.sauvegarde_auto ? " selected" : ""}>${tr("Activée", "On")}</option><option value="false"${r.sauvegarde_auto ? "" : " selected"}>${tr("Désactivée", "Off")}</option></select>
   <div class="hint">${tr("Avant de générer des macros ou d'agir sur une plage (Delete / Store / Copy / Move … Thru …), l'app envoie <code>SaveShow</code> : grandMA3 garde une copie datée dans Backup Shows (Menu › Backup › Load). 2 minutes minimum entre deux sauvegardes.",
     "Before generating macros or acting on a range (Delete / Store / Copy / Move … Thru …), the app sends <code>SaveShow</code>: grandMA3 keeps a dated copy in Backup Shows (Menu › Backup › Load). At least 2 minutes between two backups.")}</div>
@@ -414,6 +462,8 @@ async function reglages() {
   <div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier le plugin AI_Index", "Check the AI_Index plugin")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>${blocInstallPlugin(false)}
   <h4>${tr("Apparence et données", "Appearance and data")}</h4>
   ${blocLangue(r.langue)}
+  <label>${tr("Prévenir quand une nouvelle version sort", "Tell me when a new version is out")}</label><select id="vmaj"><option value="true"${r.verifier_mises_a_jour ? " selected" : ""}>${tr("Oui", "Yes")}</option><option value="false"${r.verifier_mises_a_jour ? "" : " selected"}>${tr("Non", "No")}</option></select>
+  <div class="hint">${tr("Au lancement, l'app regarde la dernière version publiée sur GitHub (aucune donnée envoyée).", "On launch, the app checks the latest version published on GitHub (no data sent).")}</div>
   <label>${tr("Thème", "Theme")}</label><select id="thm"><option value="sombre"${r.theme === "sombre" ? " selected" : ""}>${tr("Sombre", "Dark")}</option><option value="clair"${r.theme === "clair" ? " selected" : ""}>${tr("Clair", "Light")}</option></select>
   <div class="acts2"><button class="btn" id="bHist">${tr("🗑 Effacer l'historique du chat", "🗑 Clear chat history")}</button><button class="btn" id="bWiz">${tr("🧭 Relancer l'assistant", "🧭 Restart the setup wizard")}</button></div><div class="msg" id="gMsg"></div>
   <div class="foot"><span></span><div class="acts2" style="margin:0"><button class="btn" id="bClose">${tr("Fermer", "Close")}</button><button class="btn pri" style="padding:8px 22px" id="bSave">${tr("Enregistrer", "Save")}</button></div></div>`);
@@ -424,7 +474,7 @@ async function reglages() {
   $("bRaz").onclick = async () => { majCout(await J("/session/reinitialiser", "POST")); say("cMsg", true, tr("Compteur remis à zéro.", "Counter reset.")); };
   $("bSave").onclick = async () => {
     const avant = r.langue;
-    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, sauvegarde_auto: $("sauv").value === "true", dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
+    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, sauvegarde_auto: $("sauv").value === "true", validation_manuelle: $("valid").value === "true", verifier_mises_a_jour: $("vmaj").value === "true", dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
     if (!d.ok) return say("gMsg", false, Object.values(d.erreurs).join(" "));
     if (d.reglages.langue !== avant) return location.reload();   // nouvelle langue : on recharge toute l'interface
     applyTheme(d.reglages.theme); $("modele").value = d.reglages.modele_defaut;
@@ -457,6 +507,22 @@ async function assistant() {
     };
   };
   rendre();
+}
+// Lien externe : navigateur par défaut dans l'app de bureau, nouvel onglet sinon.
+function ouvrirLien(url) {
+  try { if (window.pywebview?.api?.ouvrir_lien) return window.pywebview.api.ouvrir_lien(url); } catch (e) {}
+  window.open(url, "_blank", "noopener");
+}
+async function verifierVersion() {
+  try {
+    const v = await J("/version");
+    if (!v.nouvelle) return;
+    const a = $("maj");
+    a.textContent = tr(`⬆ Version ${v.derniere} disponible`, `⬆ Version ${v.derniere} available`);
+    a.title = tr(`Tu as la ${v.actuelle}. Clique pour ouvrir la page de téléchargement.`, `You have ${v.actuelle}. Click to open the download page.`);
+    a.onclick = e => { e.preventDefault(); ouvrirLien(v.url); };
+    a.style.display = "";
+  } catch (e) {}
 }
 function blocLangue(choix) {
   const o = (v, t) => `<option value="${v}"${choix === v ? " selected" : ""}>${t}</option>`;
@@ -495,6 +561,7 @@ $("ov").addEventListener("mousedown", e => { if (e.target === $("ov")) fermer();
   if (!hist.length) welcome();
   try { localStorage.removeItem("coutSession"); } catch (e) {}   // ancien compteur, remplacé par celui du serveur
   refresh();
+  verifierVersion();
   try {
     if (!R) R = await J("/reglages");
     applyTheme(R.reglages.theme);

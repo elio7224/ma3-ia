@@ -26,6 +26,8 @@ def console(tmp_path, monkeypatch):
     envoyes = []
     monkeypatch.setattr(tools, "ma3", type("F", (), {"send": lambda self, c: envoyes.append(c) or "envoyé"})())
     monkeypatch.setattr(plugin_ma3, "PAUSE_APRES_IMPORT_S", 0)
+    # Quand le plugin répond, c'est la version à jour (les mises à jour sont testées dans test_plugin_version.py).
+    monkeypatch.setattr(plugin_ma3, "version_dans_index", lambda: plugin_ma3.VERSION_ATTENDUE)
     return envoyes, tmp_path / "lib" / "datapools" / "plugins" / "ai_index.xml"
 
 

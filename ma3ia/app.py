@@ -1,6 +1,8 @@
 import os
 import sys
 import threading
+import time
+import uuid
 
 # Les messages console contiennent des emojis : sans ça, un print() plante sous Windows (cp1252)
 # et l'endpoint renvoie « Internal Server Error » au lieu de JSON (ex. Rescan : « Unexpected token »).
@@ -19,6 +21,7 @@ from tools import preparer_et_exporter_show, charger_contexte_temp
 from outils import TOOLS, FUNCS
 import reglages
 import journal
+import ma3 as osc
 import i18n
 from i18n import tr
 from config import (MAX_TOKENS, ajouter_usage, limiter_historique, bloc_systeme, choisir_modele, resume_usage, usage_vide)
@@ -149,7 +152,16 @@ def status():
     from config import MODELES
     return {"counts": compter_index(), "modeles": {k: v["nom"] for k, v in MODELES.items()},
             "modele_defaut": reglages.charger()["modele_defaut"], "cle": reglages.etat_cle()["presente"],
-            "session": etat_session(), "langue": i18n.langue()}
+            "session": etat_session(), "langue": i18n.langue(), "plugin": etat_plugin(),
+            "validation": reglages.charger()["validation_manuelle"]}
+
+
+def etat_plugin():
+    """Version du plugin qui a produit l'index chargé, comparée à celle fournie avec l'app."""
+    import plugin_ma3
+    v = tools.VERSION_PLUGIN_CONSOLE
+    return {"console": v, "attendue": plugin_ma3.VERSION_ATTENDUE,
+            "a_mettre_a_jour": v is not None and v < plugin_ma3.VERSION_ATTENDUE}
 
 
 # ---------------------------------------------------------------- garde-fou de coût (session = depuis le lancement)
@@ -164,6 +176,47 @@ def etat_session():
     return {"cout_usd": cout, "plafond_usd": plafond,
             "alerte": plafond > 0 and cout >= SEUIL_ALERTE * plafond,
             "atteint": plafond > 0 and cout >= plafond}
+
+
+# ---------------------------------------------------------------- mode validation (commandes en attente)
+
+OUTILS_ECRITURE = {"create_macro", "configure_matricks", "run_command", "generate_fx_grid", "generate_macros_from_template"}
+EN_ATTENTE = {}            # id -> {"outil", "commandes"} : préparées par l'IA, pas encore envoyées
+DELAI_ENVOI_S = 0.01
+
+
+@app.post("/api/attente/{ident}/envoyer")
+def envoyer_attente(ident: str):
+    lot = EN_ATTENTE.pop(ident, None)
+    if lot is None:
+        return {"ok": False, "message": tr("Ces commandes ne sont plus disponibles (app relancée ?).",
+                                           "These commands are no longer available (app restarted?).")}
+    with journal.source(tr(f"Validé · {lot['outil']}", f"Approved · {lot['outil']}")):
+        for c in lot["commandes"]:
+            tools.ma3.send(c)
+            if c == "SaveShow":
+                tools._derniere_sauvegarde[0] = time.time()
+                time.sleep(1.0)
+            else:
+                time.sleep(DELAI_ENVOI_S)
+    n = len(lot["commandes"])
+    return {"ok": True, "envoyees": n, "message": tr(f"{n} commande(s) envoyée(s).", f"{n} command(s) sent.")}
+
+
+@app.post("/api/attente/{ident}/annuler")
+def annuler_attente(ident: str):
+    EN_ATTENTE.pop(ident, None)
+    return {"ok": True, "message": tr("Annulé : rien n'a été envoyé.", "Cancelled: nothing was sent.")}
+
+
+@app.get("/api/version")
+def version_disponible():
+    """Version installée et, si activé, dernière version publiée sur GitHub."""
+    from version import VERSION
+    if not reglages.charger()["verifier_mises_a_jour"]:
+        return {"actuelle": VERSION, "derniere": None, "nouvelle": False, "url": None}
+    import mises_a_jour
+    return mises_a_jour.verifier()
 
 
 @app.post("/api/session/reinitialiser")
@@ -284,14 +337,15 @@ def chat(payload: ChatPayload):
     cle_modele, modele_id = choisir_modele(payload.modele)
     max_tours = reglages.charger()["max_tours_outils"]
     usage = usage_vide()
-    logs, actions = [], []
+    logs, actions, attentes = [], [], []
+    validation = reglages.charger()["validation_manuelle"]
 
     def reponse(texte, avec_historique=True):
         msgs = payload.messages + [{"role": "assistant", "content": texte}] if avec_historique else payload.messages
         if avec_historique:
             sauvegarder_memoire_disque(msgs)
         return {"response": texte, "logs": logs, "actions": actions, "messages": msgs,
-                "usage": resume_usage(usage, cle_modele), "session": etat_session()}
+                "usage": resume_usage(usage, cle_modele), "session": etat_session(), "en_attente": attentes}
 
     if not messages_nettoyes:
         return reponse(tr("⚠️ Message vide ou invalide.", "⚠️ Empty or invalid message."), avec_historique=False)
@@ -350,8 +404,21 @@ def chat(payload: ChatPayload):
         for b in appels:
             log_entry = f"⚡ Exécution : {b.name}({json.dumps(b.input, ensure_ascii=False)})"
             try:
-                with journal.source(f"IA · {b.name}"):
-                    res, erreur = FUNCS[b.name](**b.input), False
+                if validation and b.name in OUTILS_ECRITURE:
+                    # Mode validation : l'outil tourne normalement mais ses commandes sont gardées, pas envoyées.
+                    with osc.capture() as cmds:
+                        res, erreur = FUNCS[b.name](**b.input), False
+                    if cmds:
+                        ident = uuid.uuid4().hex[:10]
+                        EN_ATTENTE[ident] = {"outil": b.name, "commandes": list(cmds)}
+                        attentes.append({"id": ident, "outil": b.name, "commandes": list(cmds)})
+                        res = tr(f"⏸ MODE VALIDATION : {len(cmds)} commande(s) préparée(s), PAS ENVOYÉES. L'utilisateur doit "
+                                 "les vérifier et cliquer sur « Envoyer » dans le chat.",
+                                 f"⏸ APPROVAL MODE: {len(cmds)} command(s) prepared, NOT SENT. The user must check them "
+                                 "and click \"Send\" in the chat.") + f"\n{res}"
+                else:
+                    with journal.source(f"IA · {b.name}"):
+                        res, erreur = FUNCS[b.name](**b.input), False
             except Exception as e:
                 res, erreur = f"Erreur d'exécution de l'outil : {type(e).__name__} : {e}", True
             logs.append(log_entry + f" ➔ {res}")

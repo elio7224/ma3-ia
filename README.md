@@ -24,11 +24,14 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 - Répondre à des questions sur ton show (macros, séquences, presets, groupes, MAtricks, apparences).
 - Créer et modifier des objets : macros (y compris en masse), MAtricks, grilles d'effets, commandes libres.
 - Consulter le manuel officiel grandMA3 quand il doute d'une syntaxe.
+- **Mode validation** (réglable) : l'IA prépare les commandes sans les envoyer, tu les vérifies dans le chat
+  puis tu cliques sur « Envoyer » ou « Annuler ». Idéal en répétition.
 - **Journal des commandes** : tout ce qui a été envoyé à la console, avec l'heure et l'outil de l'IA qui l'a envoyé.
 - **Garde-fou de coût** : plafond de dépense par session, alerte à 80 %, blocage au plafond.
 - **Sauvegarde automatique du show** avant chaque action de masse (génération de macros, Delete/Store/Copy/Move
   sur une plage) : l'app envoie `SaveShow`, et grandMA3 garde une copie datée dans *Backup Shows*.
 - **Interface en français et en anglais** (automatique selon Windows, modifiable dans les Réglages).
+- **Alerte de nouvelle version** : au lancement, l'app regarde la dernière Release GitHub (désactivable).
 
 ## Prérequis
 - Windows 10/11 (64 bits), grandMA3 onPC. Python 3.12 seulement pour la version « code source ».
@@ -67,7 +70,9 @@ Pour lire ton show, l'IA a besoin d'un petit plugin Lua dans grandMA3 : `plugin/
 - **Ce qu'il fait :** à chaque Rescan, l'app le lance par OSC ; il écrit la liste de tes objets (macros, séquences,
   groupes, presets…) dans `gma3_library\ai_index.json`, que l'IA lit ensuite. **Il ne modifie rien dans ton show.**
 - **Installation automatique** (assistant de premier lancement ou ⚙ Réglages → « Installer automatiquement ») :
-  1. l'app lance d'abord le plugin : s'il répond, il est déjà installé et rien n'est importé (pas de doublon).
+  1. l'app lance d'abord le plugin : s'il répond et qu'il est à jour, rien n'est importé (pas de doublon).
+     Si c'est une ancienne version, elle la supprime (`Delete Plugin "AI_Index"`) pour la remplacer ; une pastille
+     « 🔌 Plugin à mettre à jour » apparaît dans l'en-tête quand c'est le cas.
      S'il n'est pas encore là, la console affiche « Object not found » : c'est normal ;
   2. sinon elle écrit `ai_index.xml` dans `gma3_library\datapools\plugins` ;
   3. elle envoie `Import Plugin Library "ai_index.xml" At Plugin <n>` : le plugin arrive à l'emplacement choisi

@@ -24,11 +24,14 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 - Answer questions about your show (macros, sequences, presets, groups, MAtricks, appearances).
 - Create and edit objects: macros (including in bulk), MAtricks, effect grids, free commands.
 - Look up the official grandMA3 manual when it is unsure about a syntax.
+- **Approval mode** (optional): the AI prepares the commands without sending them; you check them in the chat,
+  then click "Send" or "Cancel". Ideal in rehearsal.
 - **Command log**: everything sent to the console, with the time and the AI tool that sent it.
 - **Cost guard**: spending limit per session, warning at 80%, requests blocked at the limit.
 - **Automatic show backup** before every bulk action (macro generation, Delete/Store/Copy/Move on a range):
   the app sends `SaveShow`, and grandMA3 keeps a dated copy in *Backup Shows*.
 - **English and French interface** (automatic from the Windows language, can be changed in Settings).
+- **New version alert**: on launch, the app checks the latest GitHub Release (can be turned off).
 
 The AI answers in the language you write in.
 
@@ -69,7 +72,9 @@ To read your show, the AI needs a small Lua plugin in grandMA3: `plugin/ai_index
 - **What it does:** on every Rescan, the app runs it over OSC; it writes the list of your objects (macros, sequences,
   groups, presets…) to `gma3_library\ai_index.json`, which the AI then reads. **It does not change anything in your show.**
 - **Automatic installation** (first-launch wizard or ⚙ Settings → "Install automatically"):
-  1. the app first runs the plugin: if it answers, it is already installed and nothing is imported (no duplicate).
+  1. the app first runs the plugin: if it answers and is up to date, nothing is imported (no duplicate).
+     If it is an older version, the app deletes it (`Delete Plugin "AI_Index"`) to replace it; a
+     "🔌 Plugin update available" badge shows in the header when that is the case.
      If it is not there yet, the console shows "Object not found": this is normal;
   2. otherwise it writes `ai_index.xml` to `gma3_library\datapools\plugins`;
   3. it sends `Import Plugin Library "ai_index.xml" At Plugin <n>`: the plugin lands in the chosen slot
