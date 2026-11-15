@@ -80,6 +80,7 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
   <div class="hr">
     <span class="chip"><i id="dot" class="dot"></i><span id="st">Connexion…</span></span>
     <select id="modele" class="btn" title="Modèle de l'IA"><option value="haiku">Haiku 5.5 · économique</option><option value="sonnet">Sonnet 5.5 · plus puissant</option></select>
+    <a class="chip" id="maj" href="#" style="display:none;color:var(--yl);border-color:var(--yl);text-decoration:none"></a>
     <span class="chip tot" id="cout" title="Coût estimé depuis le lancement de l'app, et plafond (⚙ Réglages)">Session : ≈ 0,000 $</span>
     <button id="bRescan" class="btn">🔄 Rescan</button>
     <button id="bNew" class="btn">🗑 Nouvelle conversation</button>
@@ -418,6 +419,8 @@ async function reglages() {
   <div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier le plugin AI_Index", "Check the AI_Index plugin")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>${blocInstallPlugin(false)}
   <h4>${tr("Apparence et données", "Appearance and data")}</h4>
   ${blocLangue(r.langue)}
+  <label>${tr("Prévenir quand une nouvelle version sort", "Tell me when a new version is out")}</label><select id="vmaj"><option value="true"${r.verifier_mises_a_jour ? " selected" : ""}>${tr("Oui", "Yes")}</option><option value="false"${r.verifier_mises_a_jour ? "" : " selected"}>${tr("Non", "No")}</option></select>
+  <div class="hint">${tr("Au lancement, l'app regarde la dernière version publiée sur GitHub (aucune donnée envoyée).", "On launch, the app checks the latest version published on GitHub (no data sent).")}</div>
   <label>${tr("Thème", "Theme")}</label><select id="thm"><option value="sombre"${r.theme === "sombre" ? " selected" : ""}>${tr("Sombre", "Dark")}</option><option value="clair"${r.theme === "clair" ? " selected" : ""}>${tr("Clair", "Light")}</option></select>
   <div class="acts2"><button class="btn" id="bHist">${tr("🗑 Effacer l'historique du chat", "🗑 Clear chat history")}</button><button class="btn" id="bWiz">${tr("🧭 Relancer l'assistant", "🧭 Restart the setup wizard")}</button></div><div class="msg" id="gMsg"></div>
   <div class="foot"><span></span><div class="acts2" style="margin:0"><button class="btn" id="bClose">${tr("Fermer", "Close")}</button><button class="btn pri" style="padding:8px 22px" id="bSave">${tr("Enregistrer", "Save")}</button></div></div>`);
@@ -428,7 +431,7 @@ async function reglages() {
   $("bRaz").onclick = async () => { majCout(await J("/session/reinitialiser", "POST")); say("cMsg", true, tr("Compteur remis à zéro.", "Counter reset.")); };
   $("bSave").onclick = async () => {
     const avant = r.langue;
-    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, sauvegarde_auto: $("sauv").value === "true", dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
+    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, plafond_session_usd: $("plaf").value, sauvegarde_auto: $("sauv").value === "true", verifier_mises_a_jour: $("vmaj").value === "true", dossier_bibliotheque: $("bib").value, theme: $("thm").value, langue: $("lng").value });
     if (!d.ok) return say("gMsg", false, Object.values(d.erreurs).join(" "));
     if (d.reglages.langue !== avant) return location.reload();   // nouvelle langue : on recharge toute l'interface
     applyTheme(d.reglages.theme); $("modele").value = d.reglages.modele_defaut;
@@ -461,6 +464,22 @@ async function assistant() {
     };
   };
   rendre();
+}
+// Lien externe : navigateur par défaut dans l'app de bureau, nouvel onglet sinon.
+function ouvrirLien(url) {
+  try { if (window.pywebview?.api?.ouvrir_lien) return window.pywebview.api.ouvrir_lien(url); } catch (e) {}
+  window.open(url, "_blank", "noopener");
+}
+async function verifierVersion() {
+  try {
+    const v = await J("/version");
+    if (!v.nouvelle) return;
+    const a = $("maj");
+    a.textContent = tr(`⬆ Version ${v.derniere} disponible`, `⬆ Version ${v.derniere} available`);
+    a.title = tr(`Tu as la ${v.actuelle}. Clique pour ouvrir la page de téléchargement.`, `You have ${v.actuelle}. Click to open the download page.`);
+    a.onclick = e => { e.preventDefault(); ouvrirLien(v.url); };
+    a.style.display = "";
+  } catch (e) {}
 }
 function blocLangue(choix) {
   const o = (v, t) => `<option value="${v}"${choix === v ? " selected" : ""}>${t}</option>`;
@@ -499,6 +518,7 @@ $("ov").addEventListener("mousedown", e => { if (e.target === $("ov")) fermer();
   if (!hist.length) welcome();
   try { localStorage.removeItem("coutSession"); } catch (e) {}   // ancien compteur, remplacé par celui du serveur
   refresh();
+  verifierVersion();
   try {
     if (!R) R = await J("/reglages");
     applyTheme(R.reglages.theme);

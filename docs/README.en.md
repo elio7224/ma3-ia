@@ -29,6 +29,7 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 - **Automatic show backup** before every bulk action (macro generation, Delete/Store/Copy/Move on a range):
   the app sends `SaveShow`, and grandMA3 keeps a dated copy in *Backup Shows*.
 - **English and French interface** (automatic from the Windows language, can be changed in Settings).
+- **New version alert**: on launch, the app checks the latest GitHub Release (can be turned off).
 
 The AI answers in the language you write in.
 

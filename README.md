@@ -29,6 +29,7 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 - **Sauvegarde automatique du show** avant chaque action de masse (génération de macros, Delete/Store/Copy/Move
   sur une plage) : l'app envoie `SaveShow`, et grandMA3 garde une copie datée dans *Backup Shows*.
 - **Interface en français et en anglais** (automatique selon Windows, modifiable dans les Réglages).
+- **Alerte de nouvelle version** : au lancement, l'app regarde la dernière Release GitHub (désactivable).
 
 ## Prérequis
 - Windows 10/11 (64 bits), grandMA3 onPC. Python 3.12 seulement pour la version « code source ».

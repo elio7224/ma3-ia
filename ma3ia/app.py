@@ -166,6 +166,16 @@ def etat_session():
             "atteint": plafond > 0 and cout >= plafond}
 
 
+@app.get("/api/version")
+def version_disponible():
+    """Version installée et, si activé, dernière version publiée sur GitHub."""
+    from version import VERSION
+    if not reglages.charger()["verifier_mises_a_jour"]:
+        return {"actuelle": VERSION, "derniere": None, "nouvelle": False, "url": None}
+    import mises_a_jour
+    return mises_a_jour.verifier()
+
+
 @app.post("/api/session/reinitialiser")
 def reinitialiser_session():
     COUT_SESSION["usd"] = 0.0
