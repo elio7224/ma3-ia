@@ -1,5 +1,5 @@
 """Version de l'application (utilisée par l'installateur, la fiche « Propriétés » de l'exe et les Releases GitHub)."""
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 NOM = "MA3-IA"
 EDITEUR = "elio7224"
 DESCRIPTION = "grandMA3 AI Control"
