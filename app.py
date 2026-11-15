@@ -18,7 +18,7 @@ import tools
 from tools import preparer_et_exporter_show, charger_contexte_temp
 from outils import TOOLS, FUNCS
 import reglages
-from config import (MAX_TOKENS, ajouter_usage, bloc_systeme, choisir_modele, resume_usage, usage_vide)
+from config import (MAX_TOKENS, ajouter_usage, limiter_historique, bloc_systeme, choisir_modele, resume_usage, usage_vide)
 
 HISTORIQUE_FICHIER = reglages.chemin_historique()
 
@@ -224,7 +224,7 @@ def sync_show():
 @app.post("/api/chat")
 def chat(payload: ChatPayload):
     sauvegarder_memoire_disque(payload.messages)
-    messages_nettoyes = conserver_memoire_texte(payload.messages)
+    messages_nettoyes = limiter_historique(conserver_memoire_texte(payload.messages))
     cle_modele, modele_id = choisir_modele(payload.modele)
     max_tours = reglages.charger()["max_tours_outils"]
     usage = usage_vide()
