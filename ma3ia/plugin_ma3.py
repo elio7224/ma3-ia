@@ -1,8 +1,9 @@
 """Installation automatique du plugin AI_Index dans grandMA3.
 
 Le plugin (plugin/ai_index.lua) liste les objets du show dans gma3_library/ai_index.json, que l'IA lit ensuite.
-Installation, sans jamais créer de doublon :
-  1. on lance le plugin : s'il répond, il est déjà installé → on s'arrête ;
+Installation ou mise à jour, sans jamais créer de doublon :
+  1. on lance le plugin : s'il répond avec la version attendue (champ "plugin" de l'index) → rien à faire ;
+     s'il répond avec une version plus ancienne → on le supprime (Delete Plugin "AI_Index") et on continue ;
   2. sinon on écrit ai_index.xml dans gma3_library/datapools/plugins, au format d'export de grandMA3
      (UserPlugin > ComponentLua > FileContent : le Lua en Base64, par blocs de 1024 octets) ;
   3. on envoie `Import Plugin Library "ai_index.xml" At Plugin <n>` (réglage « plugin_emplacement ») :
@@ -25,6 +26,17 @@ FICHIER_XML = reglages.PLUGIN_FICHIER          # ai_index.xml
 TAILLE_BLOC = 1024
 DATA_VERSION = "2.5.1.0"                        # identique à un export réel de grandMA3 2.5
 PAUSE_APRES_IMPORT_S = 2.0
+VERSION_ATTENDUE = 2                            # = VERSION_PLUGIN dans plugin/ai_index.lua
+
+
+def version_dans_index():
+    """Version du plugin qui a écrit ai_index.json (1 si le champ manque), None si pas d'index lisible."""
+    import json
+    try:
+        with open(tools._fichier_index(), encoding="utf-8-sig", errors="replace") as f:
+            return json.load(f).get("plugin", 1)
+    except (OSError, ValueError):
+        return None
 
 
 def generer_xml(lua: bytes, version: str = "0.0.0.0") -> str:
@@ -57,14 +69,24 @@ def installer() -> dict:
         # 1. Déjà installé ?
         etapes.append(tr("Test : lancement du plugin AI_Index déjà présent dans le show…",
                          "Test: running the AI_Index plugin already in the show…"))
+        mise_a_jour = False
         if tools._lancer_plugin_index() is None:
-            etapes.append(tr("✅ Le plugin répond : il est déjà installé, rien à importer.",
-                             "✅ The plugin answers: it is already installed, nothing to import."))
-            return {"ok": True, "deja_installe": True, "etapes": etapes, "chemin_xml": None,
-                    "message": tr("Le plugin AI_Index est déjà installé et fonctionne.",
-                                  "The AI_Index plugin is already installed and working.")}
-        etapes.append(tr("Pas de réponse : le plugin n'est pas (encore) dans le show (« Object not found » sur la console : normal).",
-                         "No answer: the plugin is not in the show yet (\"Object not found\" on the console: normal)."))
+            version = version_dans_index()
+            if version is not None and version >= VERSION_ATTENDUE:
+                etapes.append(tr(f"✅ Le plugin répond (version {version}) : il est déjà installé et à jour.",
+                                 f"✅ The plugin answers (version {version}): already installed and up to date."))
+                return {"ok": True, "deja_installe": True, "etapes": etapes, "chemin_xml": None,
+                        "message": tr("Le plugin AI_Index est déjà installé, à jour, et fonctionne.",
+                                      "The AI_Index plugin is already installed, up to date and working.")}
+            mise_a_jour = True
+            etapes.append(tr(f"Le plugin répond en version {version}, la version {VERSION_ATTENDUE} est disponible : mise à jour.",
+                             f"The plugin answers with version {version}, version {VERSION_ATTENDUE} is available: updating."))
+            tools.ma3.send(f'Delete Plugin "{NOM_PLUGIN}" /NoConfirmation')
+            etapes.append(tr(f'Ancienne version supprimée : Delete Plugin "{NOM_PLUGIN}" /NoConfirmation',
+                             f'Old version deleted: Delete Plugin "{NOM_PLUGIN}" /NoConfirmation'))
+        else:
+            etapes.append(tr("Pas de réponse : le plugin n'est pas (encore) dans le show (« Object not found » sur la console : normal).",
+               "No answer: the plugin is not in the show yet (\"Object not found\" on the console: normal)."))
 
         # 2. Fichier d'import dans la bibliothèque de la console
         bib = reglages.charger()["dossier_bibliotheque"]
@@ -97,11 +119,14 @@ def installer() -> dict:
         # 4. Vérification
         etapes.append(tr("Vérification : nouveau lancement du plugin…", "Check: running the plugin again…"))
         erreur = tools._lancer_plugin_index()
-    if erreur is None:
-        etapes.append(tr("✅ L'index est arrivé : le plugin est installé.", "✅ The index arrived: the plugin is installed."))
-        return {"ok": True, "deja_installe": False, "etapes": etapes, "chemin_xml": chemin_xml,
-                "message": tr("Plugin AI_Index installé dans ton show. Enregistre le show pour le garder.",
-                              "AI_Index plugin installed in your show. Save the show to keep it.")}
+    if erreur is None and (version_dans_index() or 0) >= VERSION_ATTENDUE:
+        etapes.append(tr("✅ L'index est arrivé avec la bonne version : le plugin est installé.",
+                         "✅ The index arrived with the right version: the plugin is installed."))
+        return {"ok": True, "deja_installe": False, "mis_a_jour": mise_a_jour, "etapes": etapes, "chemin_xml": chemin_xml,
+                "message": (tr("Plugin AI_Index mis à jour dans ton show. Enregistre le show pour le garder.",
+                               "AI_Index plugin updated in your show. Save the show to keep it.") if mise_a_jour else
+                            tr("Plugin AI_Index installé dans ton show. Enregistre le show pour le garder.",
+                               "AI_Index plugin installed in your show. Save the show to keep it."))}
     etapes.append(tr("❌ Toujours pas d'index après l'import.", "❌ Still no index after the import."))
     return {"ok": False, "deja_installe": False, "etapes": etapes, "chemin_xml": chemin_xml,
             "message": tr("L'installation n'a pas pu être confirmée. Vérifie que grandMA3 est ouvert, que l'OSC est activé "

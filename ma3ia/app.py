@@ -149,7 +149,15 @@ def status():
     from config import MODELES
     return {"counts": compter_index(), "modeles": {k: v["nom"] for k, v in MODELES.items()},
             "modele_defaut": reglages.charger()["modele_defaut"], "cle": reglages.etat_cle()["presente"],
-            "session": etat_session(), "langue": i18n.langue()}
+            "session": etat_session(), "langue": i18n.langue(), "plugin": etat_plugin()}
+
+
+def etat_plugin():
+    """Version du plugin qui a produit l'index chargé, comparée à celle fournie avec l'app."""
+    import plugin_ma3
+    v = tools.VERSION_PLUGIN_CONSOLE
+    return {"console": v, "attendue": plugin_ma3.VERSION_ATTENDUE,
+            "a_mettre_a_jour": v is not None and v < plugin_ma3.VERSION_ATTENDUE}
 
 
 # ---------------------------------------------------------------- garde-fou de coût (session = depuis le lancement)

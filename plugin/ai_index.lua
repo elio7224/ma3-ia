@@ -1,3 +1,6 @@
+-- VERSION_PLUGIN : à augmenter à chaque changement de ce fichier (l'app propose alors la mise à jour).
+local VERSION_PLUGIN = 2
+
 return function(display_handle, chemin)
     local FICHIER_PAR_DEFAUT = "C:/ProgramData/MALightingTechnology/gma3_library/ai_index.json"
     if chemin == nil or chemin == "" then
@@ -177,7 +180,7 @@ return function(display_handle, chemin)
         ErrPrintf("%s", "AI_Index : impossible d'ecrire " .. tostring(chemin) .. " : " .. tostring(fichier or erreur))
         return
     end
-    fichier:write('{"version":1,"pools":[' .. table.concat(morceaux, ",") .. ']}')
+    fichier:write('{"version":1,"plugin":' .. VERSION_PLUGIN .. ',"pools":[' .. table.concat(morceaux, ",") .. ']}')
     fichier:close()
 
     Printf("%s", "AI_Index : " .. table.concat(resume, " | "))

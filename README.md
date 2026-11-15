@@ -68,7 +68,9 @@ Pour lire ton show, l'IA a besoin d'un petit plugin Lua dans grandMA3 : `plugin/
 - **Ce qu'il fait :** à chaque Rescan, l'app le lance par OSC ; il écrit la liste de tes objets (macros, séquences,
   groupes, presets…) dans `gma3_library\ai_index.json`, que l'IA lit ensuite. **Il ne modifie rien dans ton show.**
 - **Installation automatique** (assistant de premier lancement ou ⚙ Réglages → « Installer automatiquement ») :
-  1. l'app lance d'abord le plugin : s'il répond, il est déjà installé et rien n'est importé (pas de doublon).
+  1. l'app lance d'abord le plugin : s'il répond et qu'il est à jour, rien n'est importé (pas de doublon).
+     Si c'est une ancienne version, elle la supprime (`Delete Plugin "AI_Index"`) pour la remplacer ; une pastille
+     « 🔌 Plugin à mettre à jour » apparaît dans l'en-tête quand c'est le cas.
      S'il n'est pas encore là, la console affiche « Object not found » : c'est normal ;
   2. sinon elle écrit `ai_index.xml` dans `gma3_library\datapools\plugins` ;
   3. elle envoie `Import Plugin Library "ai_index.xml" At Plugin <n>` : le plugin arrive à l'emplacement choisi

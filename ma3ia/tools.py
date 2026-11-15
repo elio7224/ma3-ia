@@ -51,6 +51,7 @@ MOTS_CLES_MA3 = {
 }
 
 INDEX_OBJETS = {}
+VERSION_PLUGIN_CONSOLE = None   # version du plugin qui a produit l'index (1 = ancien, sans le champ)
 AUTRES_POOLS = []            
 
 
@@ -145,8 +146,9 @@ def _cle_tri(numero: str):
 
 
 def charger_contexte_temp() -> str:
-    global INDEX_OBJETS, AUTRES_POOLS
+    global INDEX_OBJETS, AUTRES_POOLS, VERSION_PLUGIN_CONSOLE
     INDEX_OBJETS, AUTRES_POOLS = {}, []
+    VERSION_PLUGIN_CONSOLE = None
 
     fichier = _fichier_index()
     if not os.path.exists(fichier):
@@ -156,6 +158,7 @@ def charger_contexte_temp() -> str:
             data = json.load(f)
     except (ValueError, OSError) as e:
         return f"INDEX ILLISIBLE ({e})."
+    VERSION_PLUGIN_CONSOLE = data.get("plugin", 1)
 
     sans_numero = 0
     for pool in data.get("pools", []):

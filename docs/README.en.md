@@ -70,7 +70,9 @@ To read your show, the AI needs a small Lua plugin in grandMA3: `plugin/ai_index
 - **What it does:** on every Rescan, the app runs it over OSC; it writes the list of your objects (macros, sequences,
   groups, presets…) to `gma3_library\ai_index.json`, which the AI then reads. **It does not change anything in your show.**
 - **Automatic installation** (first-launch wizard or ⚙ Settings → "Install automatically"):
-  1. the app first runs the plugin: if it answers, it is already installed and nothing is imported (no duplicate).
+  1. the app first runs the plugin: if it answers and is up to date, nothing is imported (no duplicate).
+     If it is an older version, the app deletes it (`Delete Plugin "AI_Index"`) to replace it; a
+     "🔌 Plugin update available" badge shows in the header when that is the case.
      If it is not there yet, the console shows "Object not found": this is normal;
   2. otherwise it writes `ai_index.xml` to `gma3_library\datapools\plugins`;
   3. it sends `Import Plugin Library "ai_index.xml" At Plugin <n>`: the plugin lands in the chosen slot

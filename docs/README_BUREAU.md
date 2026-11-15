@@ -62,5 +62,6 @@ d'un mot-clé sur help.malighting.com et la garde en cache sur le PC de l'utilis
 ## Limites connues
 - OSC est à sens unique : « Tester la connexion » envoie `Echo 'ma3-ia : test de connexion'` ; seule la console peut montrer qu'il est arrivé.
 - Installation du plugin (`ma3ia/plugin_ma3.py`) : confirmée seulement par l'index produit ensuite (OSC sans retour).
-  Si une ancienne version d'AI_Index est déjà dans le show et répond, elle n'est pas remplacée.
+  Version du plugin : `VERSION_PLUGIN` dans `plugin/ai_index.lua` = `VERSION_ATTENDUE` dans `ma3ia/plugin_ma3.py`
+  (à augmenter ensemble à chaque modification du plugin ; un test le vérifie).
 - Les résultats bruts des outils (panneau « Actions ») restent en français : ils sont destinés à l'IA.
