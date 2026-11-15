@@ -1,0 +1,8 @@
+anthropic>=1.17
+fastapi>=0.158
+uvicorn>=0.54
+pydantic>=2.14
+python-osc>=1.10
+pywebview>=5.0
+keyring>=25.0
+pytest>=8

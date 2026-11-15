@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+.env
+.env*
+cle_api.txt
+memoire_chat.json
+state/
+.claude/settings.local.json
+build/
+dist/
+*.spec
+
+# Manuel grandMA3 téléchargé (propriété de MA Lighting : ne pas publier)
+docs/ma3/manuel/

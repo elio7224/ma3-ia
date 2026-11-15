@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>grandMA3 AI Control</title>
+<style>
+:root{--bg:#0b0d14;--bg2:#121520;--bg3:#1a1e2c;--bd:#272c3d;--ac:#8b5cf6;--ac2:#7c3aed;--ac3:#a78bfa;--yl:#f59e0b;--tx:#e8eaf0;--mu:#8b93a7;--ok:#22c55e;--bad:#ef4444;--sh:0 8px 28px rgba(0,0,0,.35)}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Inter,system-ui,"Segoe UI",sans-serif}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:8px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-track{background:transparent}
+body{background:radial-gradient(900px 500px at 12% -10%,rgba(124,58,237,.16),transparent 60%),radial-gradient(700px 420px at 100% 0,rgba(59,130,246,.09),transparent 60%),var(--bg);color:var(--tx);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 22px;background:rgba(18,21,32,.78);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd);z-index:2}
+.brand{display:flex;align-items:center;gap:10px;font-size:1.05rem;letter-spacing:.01em}
+.logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--ac),#3b82f6);display:grid;place-items:center;font-size:.8rem;font-weight:800;color:#fff;box-shadow:0 0 18px rgba(139,92,246,.45)}
+.brand b{background:linear-gradient(90deg,#fff,var(--ac3));-webkit-background-clip:text;background-clip:text;color:transparent}
+.badge{background:var(--yl);color:#000;font-weight:800;font-size:.66rem;padding:2px 7px;border-radius:5px}
+.hr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:8px;font-size:.78rem;background:var(--bg3);border:1px solid var(--bd);padding:6px 13px;border-radius:20px;color:var(--mu);transition:.2s}
+.chip.tot{color:var(--tx);font-variant-numeric:tabular-nums}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mu);flex:none}.dot.ok{background:var(--ok);box-shadow:0 0 9px var(--ok)}.dot.warn{background:var(--yl);box-shadow:0 0 9px var(--yl)}.dot.bad{background:var(--bad);box-shadow:0 0 9px var(--bad)}
+.btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bd);padding:7px 13px;border-radius:10px;font-size:.8rem;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--ac);transform:translateY(-1px)}.btn:active{transform:none}.btn:disabled{opacity:.5;cursor:default;transform:none}
+.btn.pri{background:linear-gradient(135deg,var(--ac2),var(--ac));border-color:transparent;color:#fff;padding:0 24px;box-shadow:0 4px 16px rgba(124,58,237,.35)}
+main{flex:1;display:flex;min-height:0}
+.chat{flex:1;display:flex;flex-direction:column;min-width:0}
+#msgs{flex:1;overflow-y:auto;padding:26px 24px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth}
+.m{max-width:900px;line-height:1.6;font-size:.94rem;animation:in .28s ease both}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.m.user{align-self:flex-end;background:linear-gradient(135deg,var(--ac2),#6d4bd8);padding:10px 16px;border-radius:16px 16px 4px 16px;white-space:pre-wrap;max-width:70%;box-shadow:0 4px 18px rgba(124,58,237,.25)}
+.m.assistant{align-self:flex-start;display:flex;gap:12px;width:100%}
+.av{flex:none;width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--bg3),var(--bg2));border:1px solid var(--bd);display:grid;place-items:center;font-size:.66rem;font-weight:800;color:var(--ac3)}
+.md{flex:1;min-width:0;background:var(--bg2);border:1px solid var(--bd);border-radius:4px 16px 16px 16px;padding:15px 20px;box-shadow:var(--sh)}
+.md>*+*{margin-top:10px}
+.md h2,.md h3,.md h4,.md h5{color:#fff;line-height:1.3;margin-top:16px}.md h2{font-size:1.15rem}.md h3{font-size:1.04rem;color:var(--ac3)}.md h4,.md h5{font-size:.95rem}
+.md ul,.md ol{padding-left:22px}.md li+li{margin-top:4px}.md li::marker{color:var(--ac)}
+.md code{background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:1px 6px;font:.85em Consolas,monospace;color:#c4b5fd}
+.md blockquote{border-left:3px solid var(--yl);padding-left:12px;color:var(--mu)}
+.md hr{border:0;border-top:1px solid var(--bd)}.md a{color:#93c5fd}
+.tw{overflow-x:auto;border:1px solid var(--bd);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{background:var(--bg3);text-align:left;color:#fff}th,td{padding:7px 12px;border-bottom:1px solid var(--bd)}
+tbody tr:nth-child(even){background:rgba(255,255,255,.025)}tr:last-child td{border-bottom:0}
+.code{border:1px solid var(--bd);border-radius:10px;overflow:hidden;background:var(--bg)}
+.code-h{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:var(--bg3);font-size:.7rem;color:var(--mu);text-transform:uppercase;letter-spacing:.05em}
+.copy{background:none;border:1px solid var(--bd);color:var(--mu);border-radius:6px;padding:2px 9px;font-size:.72rem;cursor:pointer;transition:.15s}.copy:hover{color:#fff;border-color:var(--ac)}
+.code pre{padding:12px 14px;overflow-x:auto}.code code{background:none;border:0;padding:0;color:#e2e8f0;font-size:.84rem}
+.typing{display:flex;gap:5px;padding:14px 4px}.typing i{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:b 1.2s infinite}.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes b{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-left:44px}
+.chips button{background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:20px;padding:8px 15px;font-size:.82rem;cursor:pointer;transition:.15s}.chips button:hover{border-color:var(--ac);color:#fff;transform:translateY(-1px);box-shadow:0 4px 14px rgba(124,58,237,.2)}
+.bar{display:flex;gap:10px;padding:14px 22px 18px;background:linear-gradient(to top,var(--bg) 60%,transparent)}
+textarea{flex:1;resize:none;background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:14px;padding:12px 16px;font-size:.94rem;outline:none;max-height:160px;transition:.15s;box-shadow:var(--sh)}textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
+aside{width:380px;display:flex;flex-direction:column;background:rgba(11,16,32,.7);border-left:1px solid var(--bd)}aside.hide{display:none}
+aside h3{padding:13px 16px;font-size:.76rem;color:var(--mu);background:var(--bg2);border-bottom:1px solid var(--bd);text-transform:uppercase;letter-spacing:.08em}
+#acts{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}.mu{color:var(--mu);font-size:.85rem}
+details.act{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid var(--ok);border-radius:10px;font-size:.8rem;animation:in .25s ease both}details.act.err{border-left-color:var(--bad)}
+.act summary{cursor:pointer;padding:9px 11px;display:flex;gap:8px;align-items:center;list-style:none}.act summary::-webkit-details-marker{display:none}
+.tag{background:var(--bg3);color:#c4b5fd;border-radius:5px;padding:1px 7px;font:.75rem Consolas,monospace;flex:none}.sum{color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act pre{margin:0 10px 10px;padding:8px;background:var(--bg);border-radius:7px;font:.75rem Consolas,monospace;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto;color:#cbd5e1}
+select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--mu);margin:-8px 0 0 44px}
+@media(max-width:900px){aside{display:none}}
+
+[data-theme=clair]{--bg:#f4f5fa;--bg2:#ffffff;--bg3:#eceef6;--bd:#d6d9e6;--tx:#1b1e2b;--mu:#667085;--sh:0 6px 20px rgba(30,30,60,.12)}
+[data-theme=clair] .md h2,[data-theme=clair] .md h3,[data-theme=clair] th{color:#1b1e2b}[data-theme=clair] .md h3{color:var(--ac2)}[data-theme=clair] .md code{color:var(--ac2)}[data-theme=clair] .code code{color:#1b1e2b}
+#ov{position:fixed;inset:0;background:rgba(5,6,12,.62);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}#ov.on{display:flex}
+.pn{width:min(640px,100%);max-height:92vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:18px;box-shadow:var(--sh);padding:22px 24px;animation:in .25s ease both}
+.pn h2{font-size:1.15rem;margin-bottom:4px}.pn h4{margin:18px 0 8px;font-size:.78rem;color:var(--ac3);text-transform:uppercase;letter-spacing:.08em}
+.pn label{display:block;font-size:.8rem;color:var(--mu);margin:10px 0 4px}
+.pn input,.pn select{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;font-size:.9rem;outline:none}.pn input:focus,.pn select:focus{border-color:var(--ac)}
+.row{display:flex;gap:10px;align-items:flex-end}.row>*{flex:1}.row>.sm{flex:none;width:110px}.acts2{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.msg{font-size:.82rem;margin-top:8px;min-height:1em;line-height:1.5}.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}.hint{font-size:.78rem;color:var(--mu);line-height:1.5;margin-top:6px}
+.foot{display:flex;justify-content:space-between;gap:10px;margin-top:20px;align-items:center}.steps{font-size:.75rem;color:var(--mu)}
+.pn code{background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:1px 6px;font:.82em Consolas,monospace;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">MA</span><b>grandMA3 AI Control</b></div>
+  <div class="hr">
+    <span class="chip"><i id="dot" class="dot"></i><span id="st">Connexion…</span></span>
+    <select id="modele" class="btn" title="Modèle de l'IA"><option value="haiku">Haiku 5.5 · économique</option><option value="sonnet">Sonnet 5.5 · plus puissant</option></select>
+    <span class="chip tot" id="cout" title="Estimation du coût de la session">Session : ≈ 0,000 $</span>
+    <button id="bRescan" class="btn">🔄 Rescan</button>
+    <button id="bNew" class="btn">🗑 Nouvelle conversation</button>
+    <button id="bLogs" class="btn">📋 Actions</button>
+    <button id="bSet" class="btn">⚙ Réglages</button>
+  </div>
+</header>
+<main>
+  <section class="chat">
+    <div id="msgs"></div>
+    <div class="bar">
+      <textarea id="inp" rows="1" placeholder="Écris ta demande…  (Entrée = envoyer, Maj+Entrée = nouvelle ligne)"></textarea>
+      <button id="send" class="btn pri">Envoyer</button>
+    </div>
+  </section>
+  <aside id="logs"><h3>Actions exécutées</h3><div id="acts"><p class="mu">Rien pour l'instant.</p></div></aside>
+</main>
+<div id="ov"><div class="pn" id="pn"></div></div>
+<script>
+const API = "/api", $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+let hist = [], busy = false;
+
+/* ---------- Markdown (HTML échappé d'abord : sûr) ---------- */
+function inline(t) {
+  t = esc(t);
+  const codes = [];
+  t = t.replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return "\u0000" + (codes.length - 1) + "\u0000"; });
+  t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+       .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>")
+       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)"']+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return t.replace(/\u0000(\d+)\u0000/g, (_, i) => "<code>" + codes[i] + "</code>");
+}
+function md(src) {
+  const blocks = [];
+  src = String(src).replace(/```(\w*)\n?([\s\S]*?)```/g, (_, l, c) => { blocks.push({ l, c: c.replace(/\n$/, "") }); return "\n\u0001" + (blocks.length - 1) + "\u0001\n"; });
+  const lines = src.split("\n"), li = /^([-*•]|\d+[.)])\s+/;
+  let out = "", i = 0, para = [], m;
+  const flush = () => { if (para.length) { out += "<p>" + inline(para.join("\n")).replace(/\n/g, "<br>") + "</p>"; para = []; } };
+  while (i < lines.length) {
+    const L = lines[i], T = L.trim();
+    if (!T) { flush(); i++; continue; }
+    if ((m = T.match(/^\u0001(\d+)\u0001$/))) {
+      flush(); const b = blocks[m[1]];
+      out += `<div class="code"><div class="code-h"><span>${esc(b.l || "code")}</span><button class="copy">Copier</button></div><pre><code>${esc(b.c)}</code></pre></div>`;
+      i++; continue;
+    }
+    if ((m = T.match(/^(#{1,4})\s+(.*)$/))) { flush(); const n = m[1].length + 1; out += `<h${n}>${inline(m[2])}</h${n}>`; i++; continue; }
+    if (/^(-{3,}|\*{3,})$/.test(T)) { flush(); out += "<hr>"; i++; continue; }
+    if (T[0] === "|" && i + 1 < lines.length && /^\|?[\s:|-]+\|[\s:|-]*$/.test(lines[i + 1].trim())) {
+      flush();
+      const cells = r => r.trim().replace(/^\||\|$/g, "").split("|").map(c => inline(c.trim()));
+      const head = cells(T); i += 2; let rows = "";
+      while (i < lines.length && lines[i].trim()[0] === "|") { rows += "<tr>" + cells(lines[i]).map(c => `<td>${c}</td>`).join("") + "</tr>"; i++; }
+      out += `<div class="tw"><table><thead><tr>${head.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>`;
+      continue;
+    }
+    if (li.test(T)) {
+      flush(); const ord = /^\d/.test(T); let items = "";
+      while (i < lines.length && li.test(lines[i].trim())) { items += "<li>" + inline(lines[i].trim().replace(li, "")) + "</li>"; i++; }
+      out += ord ? `<ol>${items}</ol>` : `<ul>${items}</ul>`; continue;
+    }
+    if (T[0] === ">") { flush(); out += "<blockquote>" + inline(T.replace(/^>\s?/, "")) + "</blockquote>"; i++; continue; }
+    para.push(L); i++;
+  }
+  flush(); return out;
+}
+
+/* ---------- Interface ---------- */
+const scroll = () => { const c = $("msgs"); c.scrollTop = c.scrollHeight; };
+function addMsg(role, text) {
+  const d = document.createElement("div"); d.className = "m " + role;
+  if (role === "assistant") d.innerHTML = '<div class="av">AI</div><div class="md">' + md(text) + "</div>";
+  else d.textContent = text;
+  $("msgs").appendChild(d); scroll(); return d;
+}
+function typing() {
+  const d = document.createElement("div"); d.className = "m assistant";
+  d.innerHTML = '<div class="av">AI</div><div class="md"><div class="typing"><i></i><i></i><i></i></div></div>';
+  $("msgs").appendChild(d); scroll(); return d;
+}
+function addAct(a) {
+  const box = $("acts"); const p = box.querySelector("p.mu"); if (p) p.remove();
+  const d = document.createElement("details"); d.className = "act" + (a.error ? " err" : "");
+  const res = String(a.result || "");
+  d.innerHTML = `<summary><span class="tag">${esc(a.name)}</span><span class="sum">${esc(res.slice(0, 80))}</span></summary>` +
+    (Object.keys(a.input || {}).length ? `<pre>${esc(JSON.stringify(a.input, null, 2))}</pre>` : "") + `<pre>${esc(res)}</pre>`;
+  box.appendChild(d); box.scrollTop = box.scrollHeight;
+}
+let totalCout = 0;
+try { totalCout = parseFloat(localStorage.getItem("coutSession")) || 0; } catch (e) {}
+const fr = n => (n || 0).toLocaleString("fr-FR");
+const majCout = () => { $("cout").textContent = "Session : ≈ " + totalCout.toFixed(3).replace(".", ",") + " $"; };
+function addCout(u) {
+  totalCout += u.cout_usd || 0;
+  try { localStorage.setItem("coutSession", totalCout); } catch (e) {}
+  majCout();
+  const entree = (u.input || 0) + (u.cache_read || 0) + (u.cache_write || 0);
+  const d = document.createElement("div"); d.className = "cost";
+  d.textContent = `${u.modele} · ${fr(entree)} tokens en entrée (dont ${fr(u.cache_read)} en cache) · ${fr(u.output)} en sortie · ≈ ${(u.cout_usd || 0).toFixed(4).replace(".", ",")} $`;
+  $("msgs").appendChild(d); scroll();
+}
+function welcome() {
+  addMsg("assistant", "## Bonjour 👋\nL'agent grandMA3 est prêt. Voici quelques idées pour commencer :");
+  const c = document.createElement("div"); c.className = "chips";
+  ["Liste mes macros (numéro et nom)", "Que contient mon index ?", "Lis la macro 2002 et résume-la"].forEach(t => {
+    const b = document.createElement("button"); b.textContent = t; b.onclick = () => send(t); c.appendChild(b);
+  });
+  $("msgs").appendChild(c);
+}
+async function refresh() {
+  try {
+    const d = await (await fetch(API + "/status")).json();
+    const noms = { macros: "macros", groups: "groupes", sequences: "séquences", layouts: "layouts", matricks: "matricks", presets: "presets", shapes: "shapes" };
+    const parts = Object.entries(d.counts || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${noms[k] || k}`);
+    $("st").textContent = parts.length ? "Index : " + parts.join(" · ") : "Index vide : plugin AI_Index ? (puis Rescan)";
+    $("dot").className = "dot " + (parts.length ? "ok" : "warn");
+  } catch (e) { $("st").textContent = "Serveur injoignable"; $("dot").className = "dot bad"; }
+}
+async function send(txt) {
+  txt = (txt ?? $("inp").value).trim();
+  if (!txt || busy) return;
+  busy = true; $("send").disabled = true; $("inp").value = ""; fit();
+  addMsg("user", txt); hist.push({ role: "user", content: txt });
+  const t = typing();
+  try {
+    const r = await fetch(API + "/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: hist, modele: $("modele").value }) });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json(); t.remove();
+    if (d.messages) hist = d.messages;
+    addMsg("assistant", d.response || "(réponse vide)");
+    if (d.usage) addCout(d.usage);
+    if (d.actions && d.actions.length) d.actions.forEach(addAct);
+    else (d.logs || []).forEach(l => addAct({ name: "log", input: {}, result: l, error: l.startsWith("⚠️") }));
+    refresh();
+  } catch (e) {
+    t.remove(); hist.pop();
+    addMsg("assistant", "⚠️ Connexion impossible avec le serveur : " + e.message + ". Redémarre l'application.");
+  }
+  busy = false; $("send").disabled = false; $("inp").focus();
+}
+const fit = () => { const i = $("inp"); i.style.height = "auto"; i.style.height = Math.min(i.scrollHeight, 160) + "px"; };
+
+$("send").onclick = () => send();
+$("inp").addEventListener("input", fit);
+$("inp").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+$("bLogs").onclick = () => $("logs").classList.toggle("hide");
+$("bRescan").onclick = async () => {
+  const b = $("bRescan"); b.disabled = true; b.textContent = "⏳ Scan…";
+  try {
+    const r = await fetch(API + "/sync", { method: "POST" });
+    const t = await r.text();
+    let d; try { d = JSON.parse(t); } catch (_) { throw new Error("réponse du serveur illisible (HTTP " + r.status + ") : " + t.slice(0, 200)); }
+    const titre = d.status === "success" ? "✅ **Index mis à jour.**" : d.status === "error" ? "❌ **Échec du Rescan.**" : "⚠️ **Index vide.**";
+    addMsg("assistant", titre + "\n\n" + (d.message || ""));
+  } catch (e) { addMsg("assistant", "⚠️ Rescan impossible : " + e.message); }
+  b.disabled = false; b.textContent = "🔄 Rescan"; refresh();
+};
+$("bNew").onclick = async () => {
+  if (!confirm("Effacer la conversation et la mémoire de l'IA ?")) return;
+  try { await fetch(API + "/history", { method: "DELETE" }); } catch (e) {}
+  hist = []; totalCout = 0; try { localStorage.removeItem("coutSession"); } catch (e) {} majCout(); $("msgs").innerHTML = ""; $("acts").innerHTML = '<p class="mu">Rien pour l\'instant.</p>'; welcome();
+};
+$("msgs").addEventListener("click", e => {
+  if (!e.target.classList.contains("copy")) return;
+  navigator.clipboard.writeText(e.target.closest(".code").querySelector("code").textContent);
+  e.target.textContent = "Copié ✓"; setTimeout(() => e.target.textContent = "Copier", 1200);
+});
+
+try { $("modele").value = localStorage.getItem("modele") || "haiku"; } catch (e) {}
+$("modele").addEventListener("change", () => { try { localStorage.setItem("modele", $("modele").value); } catch (e) {} });
+
+/* ---------- Réglages & premier lancement ---------- */
+const J = async (u, m = "GET", b) => (await fetch(API + u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined })).json();
+const SRC = { coffre: "coffre Windows", variable: "variable ANTHROPIC_API_KEY", fichier: "ancien fichier cle_api.txt" };
+let R = null;
+const applyTheme = t => {
+  t = t === "clair" ? "clair" : "sombre";
+  document.documentElement.setAttribute("data-theme", t);
+  try { window.pywebview?.api?.theme?.(t); } catch (e) {}   // barre de titre Windows (app de bureau)
+};
+// L'API pywebview arrive après le chargement : réapplique le thème pour colorer la barre de titre.
+window.addEventListener("pywebviewready", () => applyTheme(document.documentElement.getAttribute("data-theme")));
+const say = (id, ok, t) => { const e = $(id); if (e) { e.className = "msg " + (ok ? "ok" : "bad"); e.textContent = t; } };
+const fermer = () => $("ov").classList.remove("on");
+const ouvrir = html => { $("pn").innerHTML = html; $("ov").classList.add("on"); };
+const etatCle = c => c.presente ? "✅ Clé enregistrée : <code>" + esc(c.masque) + "</code> (" + SRC[c.source] + ")" : "❌ Aucune clé enregistrée.";
+
+function blocCle() {
+  const c = R.cle;
+  return `<label>Clé API Anthropic</label>
+  <div class="hint" id="cleEtat">${etatCle(c)}</div>
+  <input id="cleIn" type="password" autocomplete="off" placeholder="sk-ant-…  (colle une nouvelle clé pour la remplacer)">
+  <div class="acts2"><button class="btn" id="bTestCle">Tester la clé</button><button class="btn pri" style="padding:7px 16px" id="bSaveCle">Enregistrer</button>${c.source === "coffre" ? '<button class="btn" id="bDelCle">Supprimer</button>' : ""}</div>
+  <div class="msg" id="cleMsg"></div>
+  <div class="hint">La clé est stockée dans le coffre Windows (jamais dans un fichier ni dans le code) et n'est jamais réaffichée en entier.</div>`;
+}
+function blocOsc() {
+  const r = R.reglages;
+  return `<div class="row"><div><label>Adresse IP de la console</label><input id="oscH" value="${esc(r.osc_hote)}"></div><div class="sm"><label>Port OSC</label><input id="oscP" type="number" value="${r.osc_port}"></div></div>
+  <div class="acts2"><button class="btn" id="bTestOsc">Tester la connexion</button></div><div class="msg" id="oscMsg"></div>
+  <div class="hint">grandMA3 onPC sur ce PC : <code>127.0.0.1</code>. Active l'OSC en entrée dans les réglages In &amp; Out de la console, sur le même port (UDP). OSC est à sens unique : l'app ne peut pas confirmer la réception, c'est la console qui doit la montrer.</div>`;
+}
+function blocPlugin(p) {
+  const l = (ok, t) => `<div>${ok ? "✅" : "❌"} ${t}</div>`;
+  return l(p.bibliotheque_ok, "Dossier de la bibliothèque trouvé") + l(p.plugin_ok, "Plugin <code>AI_Index</code> importé dans la console") +
+    l(p.index_ok, p.index_ok ? "Index déjà produit (il y a " + p.index_age_min + " min)" : "Index pas encore produit (fais un Rescan quand la console tourne)") +
+    (p.plugin_ok ? "" : `<div class="hint">Pour l'importer : dans grandMA3, ouvre le pool des Plugins et importe le fichier <code>${esc(p.lua_source)}</code>, nomme-le <code>AI_Index</code>, puis relance la vérification. (Ce fichier est dans le dossier de l'application.)</div>`);
+}
+function lierPlugin() {
+  const b = $("bPlug"), libelle = b.textContent;
+  b.onclick = async () => {
+    b.disabled = true; b.textContent = "Vérification…";
+    $("plugEtat").innerHTML = "⏳ Vérification en cours…";
+    try {
+      R.plugin = await J("/reglages/plugin", "POST", { reglages: { dossier_bibliotheque: $("bib").value } });
+      if (R.plugin.bibliotheque) $("bib").value = R.plugin.bibliotheque;
+      $("plugEtat").innerHTML = `<div>Vérifié à ${new Date().toLocaleTimeString()} : <code>${esc(R.plugin.bibliotheque || $("bib").value)}</code></div>` + blocPlugin(R.plugin);
+    } catch (e) {
+      $("plugEtat").innerHTML = `<div class="msg bad">Vérification impossible : ${esc(e.message || String(e))}</div>`;
+    } finally { b.disabled = false; b.textContent = libelle; }
+  };
+}
+function lierCle() {
+  $("bTestCle").onclick = async () => { say("cleMsg", true, "Test en cours…"); const d = await J("/reglages/tester-cle", "POST", { cle: $("cleIn").value.trim() }); say("cleMsg", d.ok, d.message); };
+  $("bSaveCle").onclick = async () => {
+    const d = await J("/reglages/cle", "POST", { cle: $("cleIn").value.trim() });
+    say("cleMsg", d.ok, d.message);
+    if (d.ok) { $("cleIn").value = ""; R.cle = d.cle; $("cleEtat").innerHTML = etatCle(d.cle); refresh(); }
+  };
+  const del = $("bDelCle");
+  if (del) del.onclick = async () => { if (!confirm("Supprimer la clé du coffre Windows ?")) return; const d = await J("/reglages/cle", "DELETE"); R.cle = d.cle; reglages(); };
+}
+function lierOsc() {
+  $("bTestOsc").onclick = async () => { const d = await J("/reglages/tester-osc", "POST", { hote: $("oscH").value, port: $("oscP").value }); say("oscMsg", d.ok, d.message); };
+}
+const sauver = (extra = {}) => J("/reglages", "POST", { reglages: { osc_hote: $("oscH").value, osc_port: $("oscP").value, ...extra } });
+
+async function reglages() {
+  R = await J("/reglages"); const r = R.reglages;
+  const opts = Object.entries(R.modeles).map(([k, n]) => `<option value="${k}"${k === r.modele_defaut ? " selected" : ""}>${esc(n)}</option>`).join("");
+  ouvrir(`<h2>⚙ Réglages</h2><div class="hint">Enregistrés dans <code>${esc(R.fichier)}</code></div>
+  <h4>Intelligence artificielle</h4>${blocCle()}
+  <label>Modèle par défaut</label><select id="mod">${opts}</select>
+  <label>Tours d'outils maximum par demande</label><input id="tours" type="number" min="1" max="100" value="${r.max_tours_outils}">
+  <h4>Console grandMA3</h4>${blocOsc()}
+  <label>Dossier gma3_library</label><input id="bib" value="${esc(r.dossier_bibliotheque)}">
+  <div class="acts2"><button class="btn" id="bPlug">Vérifier le plugin AI_Index</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>
+  <h4>Apparence et données</h4>
+  <label>Thème</label><select id="thm"><option value="sombre"${r.theme === "sombre" ? " selected" : ""}>Sombre</option><option value="clair"${r.theme === "clair" ? " selected" : ""}>Clair</option></select>
+  <div class="acts2"><button class="btn" id="bHist">🗑 Effacer l'historique du chat</button><button class="btn" id="bWiz">🧭 Relancer l'assistant</button></div><div class="msg" id="gMsg"></div>
+  <div class="foot"><span></span><div class="acts2" style="margin:0"><button class="btn" id="bClose">Fermer</button><button class="btn pri" style="padding:8px 22px" id="bSave">Enregistrer</button></div></div>`);
+  lierCle(); lierOsc();
+  lierPlugin();
+  $("bHist").onclick = async () => { if (!confirm("Effacer tout l'historique du chat ?")) return; await fetch(API + "/history", { method: "DELETE" }); hist = []; $("msgs").innerHTML = ""; welcome(); say("gMsg", true, "Historique effacé."); };
+  $("bWiz").onclick = assistant; $("bClose").onclick = fermer;
+  $("bSave").onclick = async () => {
+    const d = await sauver({ modele_defaut: $("mod").value, max_tours_outils: $("tours").value, dossier_bibliotheque: $("bib").value, theme: $("thm").value });
+    if (!d.ok) return say("gMsg", false, Object.values(d.erreurs).join(" "));
+    applyTheme(d.reglages.theme); $("modele").value = d.reglages.modele_defaut;
+    try { localStorage.setItem("modele", d.reglages.modele_defaut); } catch (e) {}
+    say("gMsg", true, "Réglages enregistrés."); refresh();
+  };
+}
+async function assistant() {
+  R = await J("/reglages"); let n = 0;
+  const T = ["Clé API", "Console", "Plugin d'index"];
+  const rendre = () => {
+    const corps = [
+      `<div class="hint">Bienvenue ! Cette application pilote ta console grandMA3 avec une IA. Commençons par ta clé API Anthropic (à créer sur console.anthropic.com).</div>` + blocCle(),
+      `<div class="hint">Indique où se trouve ta console. Si grandMA3 onPC tourne sur ce PC, garde les valeurs par défaut.</div>` + blocOsc(),
+      `<div class="hint">Le plugin <code>AI_Index</code> permet à l'IA de lire ton showfile.</div><label>Dossier gma3_library</label><input id="bib" value="${esc(R.reglages.dossier_bibliotheque)}"><div class="acts2"><button class="btn" id="bPlug">Vérifier</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>`][n];
+    ouvrir(`<h2>🧭 Premier lancement — ${T[n]}</h2><div class="steps">Étape ${n + 1} sur 3</div>${corps}
+    <div class="foot"><button class="btn" id="bSkip">${n ? "← Retour" : "Passer"}</button><button class="btn pri" style="padding:8px 22px" id="bNext">${n < 2 ? "Suivant →" : "Terminer"}</button></div>`);
+    if (n === 0) lierCle();
+    if (n === 1) lierOsc();
+    if (n === 2) lierPlugin();
+    $("bSkip").onclick = () => n ? (n--, rendre()) : (J("/reglages", "POST", { reglages: { premier_lancement_fait: true } }), fermer());
+    $("bNext").onclick = async () => {
+      if (n === 1) { const d = await sauver(); if (!d.ok) return say("oscMsg", false, Object.values(d.erreurs).join(" ")); R.reglages = d.reglages; }
+      if (n === 2) { const d = await J("/reglages", "POST", { reglages: { dossier_bibliotheque: $("bib").value, premier_lancement_fait: true } }); if (!d.ok) { $("plugEtat").innerHTML = `<div class="msg bad">${esc(Object.values(d.erreurs).join(" "))}</div>`; return; } fermer(); refresh(); return; }
+      n++; rendre();
+    };
+  };
+  rendre();
+}
+$("bSet").onclick = reglages;
+$("ov").addEventListener("mousedown", e => { if (e.target === $("ov")) fermer(); });
+
+(async () => {
+  try {
+    const d = await (await fetch(API + "/history")).json();
+    hist = d.messages || [];
+    hist.forEach(m => { if (typeof m.content === "string") addMsg(m.role, m.content); });
+  } catch (e) {}
+  if (!hist.length) welcome();
+  majCout();
+  refresh();
+  try {
+    R = await J("/reglages"); applyTheme(R.reglages.theme);
+    if (!localStorage.getItem("modele")) $("modele").value = R.reglages.modele_defaut;
+    if (!R.reglages.premier_lancement_fait) assistant();
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
