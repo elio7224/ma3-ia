@@ -22,9 +22,16 @@ Il se relance depuis **⚙ Réglages → Relancer l'assistant**.
 
 La variable `MA3IA_CONFIG_DIR` change le dossier de config (utile pour les tests).
 
-## Créer le .exe
-Double-clic sur `construire_exe.bat` (ou : `pyinstaller --noconfirm --windowed --name MA3-IA --add-data "index.html;." --add-data "ai_index.lua;." --collect-submodules keyring.backends desktop.py`).
-Résultat : `dist\MA3-IA\MA3-IA.exe` ; copier tout le dossier `dist\MA3-IA` pour le déplacer. Prérequis sur le PC cible : Microsoft Edge WebView2 (présent par défaut sous Windows 11).
+## Créer l'installateur
+- Sur ton PC : double-clic sur `construire_exe.bat` (Inno Setup requis : `winget install JRSoftware.InnoSetup`).
+  Résultat : `dist\MA3-IA\MA3-IA.exe` (application) et `dist\MA3-IA-Setup-<version>.exe` (installateur).
+- Pour publier une version : changer `VERSION` dans `version.py`, committer, puis
+  `git tag v<version>` et `git push origin v<version>`. GitHub Actions (`.github/workflows/release.yml`) lance les tests,
+  construit l'installateur et crée la Release avec son empreinte SHA-256.
+- Choix anti-« faux virus » : PyInstaller en mode dossier (pas d'exe unique), sans compression UPX, fiche de version
+  remplie (`installeur/generer_version.py`), installation sans droits administrateur, construction publique par GitHub.
+- Prérequis sur le PC cible : Windows 10/11 64 bits avec Microsoft Edge WebView2 (présent par défaut sous Windows 11).
+- L'exe installé range ses données dans `%APPDATA%\ma3-ia` (le vrai dossier, pas celui du Python du Microsoft Store).
 
 ## Tests
 `venv\Scripts\python.exe -m pytest -q`

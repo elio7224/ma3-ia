@@ -19,14 +19,23 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 The AI answers in the language you write in.
 
 ## Requirements
-- Windows 10/11, Python 3.12, grandMA3 onPC.
+- Windows 10/11 (64-bit), grandMA3 onPC. Python 3.12 only for the "from source" version.
 - An Anthropic API key (https://console.anthropic.com).
 - On the console: incoming OSC enabled (UDP, address `/cmd`) and the `ai_index.lua` Lua plugin imported.
 
 ## Installation
-1. Download the project, then double-click `run.bat` (creates the Python environment, installs everything,
-   creates an `MA3-IA` shortcut on the Desktop).
-2. On first launch, a wizard asks for the API key and the console's OSC address, and checks the plugin.
+**Easiest: the installer** (no Python needed)
+1. Download `MA3-IA-Setup-x.y.z.exe` from the [Releases](https://github.com/elio7224/ma3-ia/releases).
+2. Run it: it installs for your Windows account, without admin rights, with shortcuts and an uninstaller.
+3. On first launch, a wizard asks for the API key and the console's OSC address, and checks the plugin.
+
+> **"Windows protected your PC"?** The installer is not code-signed yet, and Windows SmartScreen warns about any
+> new unsigned program. Click **More info → Run anyway**.
+> To verify the file: it is built by GitHub Actions straight from this source code (*Actions* tab),
+> and its SHA-256 checksum is published with the Release (`Get-FileHash .\MA3-IA-Setup-x.y.z.exe`).
+
+**From source**: download the project, then double-click `run.bat` (creates the Python environment,
+installs everything, creates an `MA3-IA` shortcut on the Desktop).
 
 More details (data locations, building the `.exe`, tests): see [README_BUREAU.md](README_BUREAU.md) (in French).
 
