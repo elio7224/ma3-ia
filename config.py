@@ -12,6 +12,15 @@ MODELE_DEFAUT = "haiku"
 MODELE = MODELES[MODELE_DEFAUT]["id"]
 MAX_TOKENS = 16000
 MAX_TOURS_OUTILS = 25
+HISTORIQUE_MAX_MESSAGES = 20   # messages du chat envoyés à l'IA (l'écran garde tout l'historique)
+
+
+def limiter_historique(messages, n=HISTORIQUE_MAX_MESSAGES):
+    """Garde les n derniers messages, en commençant par un message utilisateur (exigé par l'API)."""
+    recents = list(messages[-n:]) if n > 0 else []
+    while recents and recents[0].get("role") != "user":
+        recents.pop(0)
+    return recents
 
 PROMPT_SYSTEME = """Tu es l'assistant grandMA3 d'un éclairagiste. Tu pilotes sa console grandMA3 par OSC et tu lis son showfile (index ci-dessous + exports XML via lire_xml_temp).
 
