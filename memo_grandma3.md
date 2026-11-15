@@ -37,6 +37,12 @@ Préfixes vus dans les exports : `g` = global, `s` = sélectif, `u` = universel 
 - **Apparences** : couleurs/images des boutons de pool, dans ShowData (hors DataPool), assignées par `Assign Appearance`.
 - **Macro** : lignes exécutées dans l'ordre ; propriété `Wait` = secondes ou `Go` (attend un Go).
 
+## Sauvegarde automatique (faite par l'app)
+- Avant une action de masse (generate_macros_from_template, generate_fx_grid, run_command avec Delete/Store/Copy/Move … Thru …),
+  l'app envoie `SaveShow` (réglable). grandMA3 crée alors une copie datée dans **Backup Shows** (10 max par show).
+- Pour revenir en arrière : Menu → Backup → Load → Backup Shows → choisir la copie d'avant l'action.
+- Si le résultat d'un outil indique la sauvegarde, dis-le en une phrase à l'utilisateur.
+
 ## Format compact renvoyé par lire_xml_temp
 - Une ligne par élément, indentée : `Cue Name=Refrain No=5` → `Part` → `PresetData` → phasers.
 - `[ID 401-412] Phaser Attribute=Dimmer AbsPreset=uDimmer.70 Fade=1.50 -> Step Absolute=*70` :

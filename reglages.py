@@ -29,6 +29,7 @@ DEFAUTS = {
     "max_tours_outils": MAX_TOURS_OUTILS,
     "plafond_session_usd": 1.0,     # 0 = pas de plafond
     "langue": "auto",               # auto (langue de Windows), fr ou en
+    "sauvegarde_auto": True,        # SaveShow avant les actions de masse
     "premier_lancement_fait": False,
 }
 THEMES = ("sombre", "clair")
@@ -88,7 +89,9 @@ def _valider(cle: str, valeur):
         return (v, None) if 0 <= v <= 1000 else (None, tr("Le plafond doit être entre 0 et 1000 $ (0 = aucun plafond).", "The limit must be between 0 and 1000 $ (0 = no limit)."))
     if cle == "langue":
         return (valeur, None) if valeur in LANGUES else (None, tr(f"Langue inconnue : {valeur!r}.", f"Unknown language: {valeur!r}."))
-    if cle == "premier_lancement_fait":
+    if cle in ("premier_lancement_fait", "sauvegarde_auto"):
+        if isinstance(valeur, str):
+            valeur = valeur.strip().lower() in ("1", "true", "oui", "yes", "on")
         return bool(valeur), None
     return None, tr(f"Réglage inconnu : {cle}.", f"Unknown setting: {cle}.")
 
