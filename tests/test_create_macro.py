@@ -15,8 +15,7 @@ def envoyes(monkeypatch):
 def _attendu(n, nom, lignes):
     cmds = [f"Delete Macro {n} /noconfirm", f"Store Macro {n}", f"ChangeDestination Macro {n}"]
     for i, l in enumerate(lignes, 1):
-        if i > 1:
-            cmds.append("Insert")
+        cmds.append("Insert")
         cmds.append(f'Set {i} Property "Command" "{l}"')
     return cmds + ["ChangeDestination Root", f'Label Macro {n} "{nom}"']
 
@@ -28,10 +27,10 @@ def test_sequence_de_commandes(envoyes, lignes):
     assert f"({len(lignes)} lignes)" in r
 
 
-def test_pas_d_insert_avant_la_premiere_ligne(envoyes):
+def test_insert_avant_chaque_ligne_y_compris_la_premiere(envoyes):
     tools.create_macro(1, "A", ["x", "y", "z"])
-    assert envoyes.count("Insert") == 2
-    assert envoyes[3].startswith("Set 1 ")
+    assert envoyes.count("Insert") == 3
+    assert envoyes[3] == "Insert" and envoyes[4].startswith("Set 1 ")
 
 
 def test_delete_avant_store(envoyes):

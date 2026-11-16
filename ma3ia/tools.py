@@ -587,8 +587,7 @@ def _commandes_macro(number, name, lines):
         f"ChangeDestination Macro {number}"
     ]
     for i, line in enumerate(lines, start=1):
-        if i > 1:
-            cmds.append("Insert")
+        cmds.append("Insert")   # une macro neuve n'a aucune ligne : Insert crée la ligne i avant de la remplir
         cmds.append(f'Set {i} Property "Command" "{line}"')
     cmds.append("ChangeDestination Root")
     cmds.append(f'Label Macro {number} "{name}"')
