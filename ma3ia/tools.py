@@ -594,10 +594,32 @@ def _commandes_macro(number, name, lines):
     return cmds
 
 
+SEUIL_APERCU_OBLIGATOIRE = 50     # au-delà : un dry_run identique doit avoir été fait avant l'envoi
+VALIDITE_APERCU_S = 1800          # l'aperçu reste valable 30 min
+_APERCUS_FAITS = {}               # signature de la demande -> heure du dry_run
+
+
+def _signature_demande(start_macro, name_template, line_templates, loops, macro_step) -> str:
+    return json.dumps([start_macro, name_template, line_templates, loops, macro_step], sort_keys=True, default=str)
+
+
+def _macros_occupees(numeros) -> list:
+    """(numéro, nom) des macros de cette liste déjà présentes dans l'index du show."""
+    index = INDEX_OBJETS.get("macros", {})
+    return [(n, index[str(n)]) for n in numeros if str(n) in index]
+
+
+def _liste_occupees(occupees, max_affiches: int = 10) -> str:
+    texte = ", ".join(f"{n} « {nom} »" for n, nom in occupees[:max_affiches])
+    if len(occupees) > max_affiches:
+        texte += f" … (+{len(occupees) - max_affiches})"
+    return texte
+
+
 def generate_macros_from_template(start_macro: int = 1, name_template: str = "Macro {macro}",
                                   line_templates: list = None, loops: list = None,
                                   macro_step: int = 1, dry_run: bool = False,
-                                  delai_ms: int = 10) -> str:
+                                  delai_ms: int = 10, ecraser: bool = False) -> str:
     if not line_templates:
         return tr("Erreur : line_templates est vide.", "Error: line_templates is empty.")
     loops = loops or []
@@ -633,11 +655,31 @@ def generate_macros_from_template(start_macro: int = 1, name_template: str = "Ma
         return tr(f"Erreur de modèle : {e}", f"Template error: {e}")
 
     premier, dernier = macros[0][0], macros[-1][0]
+    signature = _signature_demande(start_macro, name_template, line_templates, loops, macro_step)
+    occupees = _macros_occupees([m[0] for m in macros])
     if dry_run:
+        _APERCUS_FAITS[signature] = time.time()
         apercu = []
         for num, nom, lignes in macros[:3] + (macros[-1:] if total > 3 else []):
             apercu.append(f"Macro {num} « {nom} » :\n" + "\n".join(f"    {i}. {l}" for i, l in enumerate(lignes, 1)))
-        return tr(f"APERÇU : {total} macros, numéros {premier} à {dernier}.", f"PREVIEW: {total} macros, numbers {premier} to {dernier}.") + "\n\n" + "\n\n".join(apercu)
+        texte = tr(f"APERÇU : {total} macros, numéros {premier} à {dernier}.", f"PREVIEW: {total} macros, numbers {premier} to {dernier}.")
+        if occupees:
+            texte += "\n" + tr(f"⚠️ {len(occupees)} numéro(s) déjà utilisé(s) dans le show, ils seraient ÉCRASÉS : {_liste_occupees(occupees)}. "
+                               "Pour les écraser quand même, rappelle l'outil avec ecraser=true.",
+                               f"⚠️ {len(occupees)} number(s) already used in the show, they would be OVERWRITTEN: {_liste_occupees(occupees)}. "
+                               "To overwrite them anyway, call the tool again with ecraser=true.")
+        return texte + "\n\n" + "\n\n".join(apercu)
+
+    if total > SEUIL_APERCU_OBLIGATOIRE and time.time() - _APERCUS_FAITS.get(signature, 0) > VALIDITE_APERCU_S:
+        return tr(f"Refusé : {total} macros (plus de {SEUIL_APERCU_OBLIGATOIRE}). Fais d'abord le même appel avec dry_run=true, "
+                  "montre l'aperçu à l'utilisateur, puis rappelle l'outil sans dry_run une fois qu'il a confirmé.",
+                  f"Refused: {total} macros (more than {SEUIL_APERCU_OBLIGATOIRE}). First make the same call with dry_run=true, "
+                  "show the preview to the user, then call the tool again without dry_run once they confirm.")
+    if occupees and not ecraser:
+        return tr(f"Refusé : {len(occupees)} numéro(s) de macro déjà utilisé(s) dans le show, ils seraient écrasés : {_liste_occupees(occupees)}. "
+                  "Rien n'a été envoyé. Demande à l'utilisateur s'il veut les écraser (alors ecraser=true) ou choisis une plage libre.",
+                  f"Refused: {len(occupees)} macro number(s) already used in the show would be overwritten: {_liste_occupees(occupees)}. "
+                  "Nothing was sent. Ask the user whether to overwrite them (then ecraser=true) or pick a free range.")
 
     note = sauvegarder_avant_masse()
     delai = max(0, delai_ms) / 1000.0
