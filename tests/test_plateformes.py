@@ -50,7 +50,8 @@ def test_nom_du_coffre(monkeypatch):
 def test_bibliotheque_avec_tilde_developpee():
     val, err = reglages._valider("dossier_bibliotheque", " '~/MALightingTechnology/gma3_library' ")
     assert err is None
-    assert val == os.path.join(os.path.expanduser("~"), "MALightingTechnology", "gma3_library")
+    # Sous Windows, les « / » saisis restent tels quels (acceptés par Windows) : on compare les chemins normalisés.
+    assert os.path.normpath(val) == os.path.join(os.path.expanduser("~"), "MALightingTechnology", "gma3_library")
 
 
 def test_langue_mac(monkeypatch):
