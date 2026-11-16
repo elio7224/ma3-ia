@@ -128,7 +128,8 @@ TOOLS = [
                     }
                 },
                 "macro_step": {"type": "integer", "description": "Pas entre deux numéros de macro (défaut 1)"},
-                "dry_run": {"type": "boolean"}
+                "dry_run": {"type": "boolean"},
+                "ecraser": {"type": "boolean", "description": "true = autorise à écraser des macros déjà présentes dans le show (refusé sinon). À n'utiliser qu'après accord de l'utilisateur."}
             },
             "required": ["start_macro", "name_template", "line_templates"]
         }
