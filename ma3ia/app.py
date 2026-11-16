@@ -320,7 +320,7 @@ def lire_reglages():
     from config import MODELES
     r = reglages.charger()
     return {"reglages": r, "cle": reglages.etat_cle(), "modeles": {k: v["nom"] for k, v in MODELES.items()},
-            "langue": i18n.langue(),
+            "langue": i18n.langue(), "plateforme": sys.platform, "coffre": reglages.nom_coffre(),
             "plugin": reglages.verifier_plugin(r["dossier_bibliotheque"]),
             "fichier": reglages.fichier_reglages()}
 

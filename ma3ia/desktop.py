@@ -1,6 +1,7 @@
 """Point d'entrée de l'application de bureau : serveur FastAPI local en arrière-plan + fenêtre native (pywebview).
 
-Lancement : `python ma3ia/desktop.py` (ou scripts/run.bat, ou MA3-IA.exe créé par scripts/construire_exe.bat).
+Lancement : `python ma3ia/desktop.py` (ou scripts/run.bat / scripts/run.command, ou l'app construite par
+scripts/construire_exe.bat sous Windows, scripts/construire_app.sh sous macOS).
 """
 import os
 import socket
@@ -48,12 +49,14 @@ def attendre_serveur(port: int, delai: float = 20.0) -> bool:
 
 
 ICONE = os.path.join(reglages.dossier_ressources(), "assets", "ma3ia.ico")
-# Couleurs de la barre de titre Windows, alignées sur les thèmes de index.html : (fond, texte, mode sombre)
+# Couleurs de la barre de titre (Windows), alignées sur les thèmes de index.html : (fond, texte, mode sombre)
 BARRE_TITRE = {"sombre": ("#0b0d14", "#e8eaf0", 1), "clair": ("#f4f5fa", "#1b1e2b", 0)}
 
 
 def identifier_application():
     """Sans AppUserModelID, Windows regroupe la fenêtre sous pythonw.exe (logo Python dans la barre des tâches)."""
+    if sys.platform != "win32":
+        return
     try:
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("MA3IA.Desktop")
@@ -66,8 +69,23 @@ def _colorref(hexa: str) -> int:
     return r | (g << 8) | (b << 16)
 
 
+def _apparence_mac(theme: str):
+    """macOS : barre de titre claire ou sombre selon le thème (apparence de l'application, sur le fil principal)."""
+    try:
+        from AppKit import NSAppearance, NSApplication
+        from PyObjCTools import AppHelper
+        nom = "NSAppearanceNameDarkAqua" if theme != "clair" else "NSAppearanceNameAqua"
+        AppHelper.callAfter(lambda: NSApplication.sharedApplication().setAppearance_(NSAppearance.appearanceNamed_(nom)))
+    except Exception:
+        pass
+
+
 def colorer_barre_titre(fenetre, theme: str):
-    """Barre de titre et bordure de la couleur de l'app (Windows 11 ; ignoré silencieusement ailleurs)."""
+    """Barre de titre de la couleur de l'app (Windows 11 : couleurs exactes ; macOS : clair / sombre)."""
+    if sys.platform == "darwin":
+        return _apparence_mac(theme)
+    if sys.platform != "win32":
+        return
     try:
         import ctypes
         fond, texte, sombre = BARRE_TITRE.get(theme, BARRE_TITRE["sombre"])

@@ -1,11 +1,21 @@
 # Construit l'installateur sur les serveurs de GitHub et le publie dans une Release.
-# Déclenché en poussant un tag de version :  git tag v1.0.0 && git push origin v1.0.0
+# Déclenché en poussant un tag de version (git tag v1.0.0 && git push origin v1.0.0),
+# ou par le bouton « Publier une version » (publier.yml), qui l'appelle avec le tag qu'il vient de créer.
 # Intérêt : n'importe qui peut voir exactement comment le fichier téléchargé a été construit (code source + journal).
 name: Release
 
 on:
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Tag de la version à construire (ex : v1.5.0)"
+        required: true
+        type: string
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 permissions:
   contents: write        # créer la Release
@@ -17,6 +27,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-python@v5
         with:
@@ -26,7 +38,7 @@ jobs:
         shell: bash
         run: |
           v=$(cd ma3ia && python -c "from version import VERSION; print(VERSION)")
-          test "v$v" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} différent de version.py ($v)"; exit 1; }
+          test "v$v" = "${TAG}" || { echo "Tag ${TAG} différent de version.py ($v)"; exit 1; }
 
       - name: Tests
         run: |
@@ -59,5 +71,42 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" dist/MA3-IA-Setup-*.exe dist/SHA256SUMS.txt \
-            --title "MA3-IA ${GITHUB_REF_NAME}" --notes-file installeur/notes_release.md
+          gh release create "${TAG}" dist/MA3-IA-Setup-*.exe dist/SHA256SUMS.txt \
+            --title "MA3-IA ${TAG}" --notes-file installeur/notes_release.md
+
+  # Version macOS : construite après l'installateur Windows, puis ajoutée à la même Release.
+  macos:
+    needs: installateur
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tests
+        run: |
+          python -m venv venv
+          venv/bin/python -m pip install -q -r requirements-build.txt
+          venv/bin/python -m pytest -q tests
+
+      - name: Construction (application + image disque)
+        run: ./scripts/construire_app.sh
+
+      - name: Empreinte SHA-256
+        run: |
+          cd dist && shasum -a 256 MA3-IA-*.dmg | tee SHA256SUMS-macos.txt
+
+      - name: Attestation de provenance
+        if: ${{ !github.event.repository.private }}
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/MA3-IA-*.dmg
+
+      - name: Ajout à la Release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${TAG}" dist/MA3-IA-*.dmg dist/SHA256SUMS-macos.txt

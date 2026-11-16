@@ -1,7 +1,9 @@
-"""Couche de réglages de l'application : réglages non secrets (JSON dans %APPDATA%) + clé API (coffre Windows).
+"""Couche de réglages de l'application : réglages non secrets (JSON) + clé API (coffre du système).
 
-- Réglages : %APPDATA%\\ma3-ia\\settings.json (dossier modifiable avec la variable MA3IA_CONFIG_DIR).
-- Clé API : Windows Credential Manager via `keyring` ; repli sur ANTHROPIC_API_KEY, puis sur l'ancien cle_api.txt.
+- Réglages : settings.json dans dossier_config() (dossier modifiable avec la variable MA3IA_CONFIG_DIR) :
+  Windows %APPDATA%\\ma3-ia, macOS ~/Library/Application Support/ma3-ia, Linux ~/.config/ma3-ia.
+- Clé API : coffre du système via `keyring` (Windows Credential Manager, trousseau macOS) ;
+  repli sur ANTHROPIC_API_KEY, puis sur l'ancien cle_api.txt.
 - La clé n'est JAMAIS écrite dans settings.json, ni affichée en clair, ni journalisée.
 Les fonctions renvoient des dictionnaires / chaînes et ne lèvent pas d'exception vers l'appelant.
 """
@@ -17,7 +19,18 @@ from i18n import LANGUES, tr
 SERVICE_COFFRE = "ma3-ia"
 UTILISATEUR_COFFRE = "anthropic_api_key"
 FICHIER_CLE_LEGACY = CLE_FICHIER
-BIBLIOTHEQUE_DEFAUT = r"C:\ProgramData\MALightingTechnology\gma3_library"
+WINDOWS = sys.platform == "win32"
+MAC = sys.platform == "darwin"
+
+
+def bibliotheque_defaut(plateforme: str = sys.platform) -> str:
+    """Dossier gma3_library créé par grandMA3 onPC : C:\\ProgramData sous Windows, ~/MALightingTechnology sous macOS."""
+    if plateforme == "win32":
+        return r"C:\ProgramData\MALightingTechnology\gma3_library"
+    return os.path.join(os.path.expanduser("~"), "MALightingTechnology", "gma3_library")
+
+
+BIBLIOTHEQUE_DEFAUT = bibliotheque_defaut()
 PLUGIN_FICHIER = "ai_index.xml"   # nom du plugin une fois importé dans la console (datapools/plugins)
 
 DEFAUTS = {
@@ -42,9 +55,23 @@ THEMES = ("sombre", "clair")
 
 def dossier_config() -> str:
     base = os.environ.get("MA3IA_CONFIG_DIR")
-    if not base:
-        base = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "ma3-ia")
-    return base
+    if base:
+        return base
+    maison = os.path.expanduser("~")
+    if WINDOWS:
+        return os.path.join(os.environ.get("APPDATA") or maison, "ma3-ia")
+    if MAC:
+        return os.path.join(maison, "Library", "Application Support", "ma3-ia")
+    return os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(maison, ".config"), "ma3-ia")
+
+
+def nom_coffre() -> str:
+    """Nom du coffre de mots de passe du système, pour les messages."""
+    if MAC:
+        return tr("trousseau macOS", "macOS Keychain")
+    if WINDOWS:
+        return tr("coffre Windows", "Windows Credential Manager")
+    return tr("coffre du système", "system keyring")
 
 
 def fichier_reglages() -> str:
@@ -81,8 +108,8 @@ def _valider(cle: str, valeur):
             return None, tr("Le port doit être un nombre.", "The port must be a number.")
         return (p, None) if 1 <= p <= 65535 else (None, tr("Le port doit être entre 1 et 65535.", "The port must be between 1 and 65535."))
     if cle == "dossier_bibliotheque":
-        v = str(valeur).strip().strip('"')
-        return (v, None) if v else (None, tr("Chemin vide.", "Empty path."))
+        v = str(valeur).strip().strip('"').strip("'").strip()
+        return (os.path.expanduser(v), None) if v else (None, tr("Chemin vide.", "Empty path."))
     if cle == "theme":
         return (valeur, None) if valeur in THEMES else (None, tr(f"Thème inconnu : {valeur!r}.", f"Unknown theme: {valeur!r}."))
     if cle == "max_tours_outils":
@@ -238,14 +265,14 @@ def etat_cle() -> dict:
 
 
 def enregistrer_cle(cle: str):
-    """Renvoie (ok, message). Stocke dans le coffre Windows."""
+    """Renvoie (ok, message). Stocke dans le coffre du système."""
     if not format_cle_valide(cle):
         return False, tr("Clé invalide : elle doit commencer par sk-ant-.", "Invalid key: it must start with sk-ant-.")
     try:
         _coffre_ecrire(cle.strip())
     except Exception as e:
-        return False, tr(f"Coffre indisponible ({type(e).__name__}). Utilise la variable ANTHROPIC_API_KEY.", f"Windows Credential Manager unavailable ({type(e).__name__}). Use the ANTHROPIC_API_KEY variable.")
-    return True, tr("Clé enregistrée dans le coffre Windows.", "Key saved in Windows Credential Manager.")
+        return False, tr(f"Coffre indisponible ({type(e).__name__}). Utilise la variable ANTHROPIC_API_KEY.", f"{nom_coffre()} unavailable ({type(e).__name__}). Use the ANTHROPIC_API_KEY variable.")
+    return True, tr(f"Clé enregistrée dans le {nom_coffre()}.", f"Key saved in {nom_coffre()}.")
 
 
 def supprimer_cle():
@@ -253,7 +280,7 @@ def supprimer_cle():
         _coffre_supprimer()
     except Exception as e:
         return False, tr(f"Suppression impossible ({type(e).__name__}).", f"Cannot delete ({type(e).__name__}).")
-    return True, tr("Clé supprimée du coffre Windows.", "Key removed from Windows Credential Manager.")
+    return True, tr(f"Clé supprimée du {nom_coffre()}.", f"Key removed from {nom_coffre()}.")
 
 
 def tester_cle(cle=None):
@@ -306,7 +333,7 @@ def tester_osc(hote: str, port):
 
 def verifier_plugin(bibliotheque: str) -> dict:
     """Vérifie l'environnement : bibliothèque, plugin AI_Index importé, index JSON déjà produit."""
-    # Chemin collé depuis l'Explorateur (« Copier en tant que chemin d'accès ») : guillemets, espaces, %VARIABLES%.
+    # Chemin collé depuis l'Explorateur / le Finder : guillemets, espaces, %VARIABLES%, ~.
     bib = str(bibliotheque or "").strip().strip('"').strip()
     bib = os.path.normpath(os.path.expandvars(os.path.expanduser(bib))) if bib else BIBLIOTHEQUE_DEFAUT
     plugin = os.path.join(bib, "datapools", "plugins", PLUGIN_FICHIER)

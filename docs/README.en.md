@@ -2,7 +2,7 @@
 
 🇫🇷 [Version française](../README.md)
 
-An AI assistant (Claude, Anthropic API) that drives a **grandMA3 onPC** console on Windows:
+An AI assistant (Claude, Anthropic API) that drives a **grandMA3 onPC** console on Windows or macOS:
 it reads your showfile (index + XML exports) and sends commands to the console over **OSC**.
 
 > ⚠️ **Independent project, not affiliated with MA Lighting Technology GmbH**, nor endorsed or supported by it.
@@ -31,13 +31,13 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 - **Cost guard**: spending limit per session, warning at 80%, requests blocked at the limit.
 - **Automatic show backup** before every bulk action (macro generation, Delete/Store/Copy/Move on a range):
   the app sends `SaveShow`, and grandMA3 keeps a dated copy in *Backup Shows*.
-- **English and French interface** (automatic from the Windows language, can be changed in Settings).
+- **English and French interface** (automatic from the system language, can be changed in Settings).
 - **New version alert**: on launch, the app checks the latest GitHub Release (can be turned off).
 
 The AI answers in the language you write in.
 
 ## Requirements
-- Windows 10/11 (64-bit), grandMA3 onPC. Python 3.12 only for the "from source" version.
+- Windows 10/11 (64-bit) or macOS (Apple Silicon Mac), grandMA3 onPC. Python 3.12 only for the "from source" version.
 - An Anthropic API key (https://console.anthropic.com).
 - On the console: incoming OSC enabled (UDP, address `/cmd`). The `AI_Index` plugin is installed from the app (see below).
 
@@ -52,13 +52,25 @@ The AI answers in the language you write in.
 > To verify the file: it is built by GitHub Actions straight from this source code (*Actions* tab),
 > and its SHA-256 checksum is published with the Release (`Get-FileHash .\MA3-IA-Setup-x.y.z.exe`).
 
-**From source**: download the project, then double-click `scripts\run.bat` (creates the Python environment,
-installs everything, creates an `MA3-IA` shortcut on the Desktop).
+**On a Mac**: download `MA3-IA-x.y.z.dmg` from the [Releases](https://github.com/elio7224/ma3-ia/releases),
+open it and drag **MA3-IA** into **Applications**.
+
+> **"MA3-IA can't be opened" / "is damaged"?** The app is not notarized by Apple yet.
+> On first launch: right-click MA3-IA → **Open** → **Open**. If macOS still refuses:
+> **System Settings → Privacy & Security → Open Anyway**, or in Terminal
+> `xattr -dr com.apple.quarantine /Applications/MA3-IA.app`.
+> If the console runs on another machine on the network, accept the **local network** access prompt (needed for OSC).
+
+**From source**:
+- Windows: download the project, then double-click `scripts\run.bat` (creates the Python environment,
+  installs everything, creates an `MA3-IA` shortcut on the Desktop).
+- macOS: double-click `scripts/run.command`. Nothing to install first: if the Mac has no recent Python, the script
+  downloads a private Python 3.12 into the project folder (no admin rights), installs everything and opens the app.
 
 More details (data locations, building the `.exe`, tests): see [README_BUREAU.md](README_BUREAU.md) (in French).
 
 ## Security
-- The API key is stored in Windows Credential Manager, never in a project file.
+- The API key is stored in the system keyring (Credential Manager on Windows, Keychain on macOS), never in a project file.
 - OSC is one-way: the AI sends commands but cannot confirm they succeeded.
   Always test on a copy of your show first.
 - Before a bulk action, the show is saved automatically (can be turned off in ⚙ Settings). To undo:
@@ -71,13 +83,13 @@ More details (data locations, building the `.exe`, tests): see [README_BUREAU.md
 ## The AI_Index plugin
 To read your show, the AI needs a small Lua plugin in grandMA3: `plugin/ai_index.lua`.
 - **What it does:** on every Rescan, the app runs it over OSC; it writes the list of your objects (macros, sequences,
-  groups, presets…) to `gma3_library\ai_index.json`, which the AI then reads. **It does not change anything in your show.**
+  groups, presets…) to `gma3_library/ai_index.json`, which the AI then reads. **It does not change anything in your show.**
 - **Automatic installation** (first-launch wizard or ⚙ Settings → "Install automatically"):
   1. the app first runs the plugin: if it answers and is up to date, nothing is imported (no duplicate).
      If it is an older version, the app deletes it (`Delete Plugin "AI_Index"`) to replace it; a
      "🔌 Plugin update available" badge shows in the header when that is the case.
      If it is not there yet, the console shows "Object not found": this is normal;
-  2. otherwise it writes `ai_index.xml` to `gma3_library\datapools\plugins`;
+  2. otherwise it writes `ai_index.xml` to `gma3_library/datapools/plugins`;
   3. it sends `Import Plugin Library "ai_index.xml" At Plugin <n>`: the plugin lands in the chosen slot
      (99 by default, editable next to the button; **it must be empty** in the Plugins pool);
   4. it runs it again to check that the index arrives.

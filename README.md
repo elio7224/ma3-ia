@@ -2,7 +2,7 @@
 
 🇬🇧 [English version](docs/README.en.md)
 
-Assistant IA (Claude, API Anthropic) qui pilote une console **grandMA3 onPC** sous Windows :
+Assistant IA (Claude, API Anthropic) qui pilote une console **grandMA3 onPC** sous Windows ou macOS :
 il lit ton showfile (index + exports XML) et envoie des commandes à la console par **OSC**.
 
 > ⚠️ **Projet indépendant, non affilié à MA Lighting Technology GmbH**, ni approuvé ou soutenu par elle.
@@ -31,11 +31,11 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 - **Garde-fou de coût** : plafond de dépense par session, alerte à 80 %, blocage au plafond.
 - **Sauvegarde automatique du show** avant chaque action de masse (génération de macros, Delete/Store/Copy/Move
   sur une plage) : l'app envoie `SaveShow`, et grandMA3 garde une copie datée dans *Backup Shows*.
-- **Interface en français et en anglais** (automatique selon Windows, modifiable dans les Réglages).
+- **Interface en français et en anglais** (automatique selon la langue du système, modifiable dans les Réglages).
 - **Alerte de nouvelle version** : au lancement, l'app regarde la dernière Release GitHub (désactivable).
 
 ## Prérequis
-- Windows 10/11 (64 bits), grandMA3 onPC. Python 3.12 seulement pour la version « code source ».
+- Windows 10/11 (64 bits) ou macOS (Mac Apple Silicon), grandMA3 onPC. Python 3.12 seulement pour la version « code source ».
 - Une clé API Anthropic (https://console.anthropic.com).
 - Dans la console : OSC entrant activé (UDP, adresse `/cmd`). Le plugin `AI_Index` s'installe depuis l'app (voir plus bas).
 
@@ -50,13 +50,25 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 > Pour vérifier le fichier : il est construit par GitHub Actions directement depuis ce code (onglet *Actions*),
 > et son empreinte SHA-256 est publiée avec la Release (`Get-FileHash .\MA3-IA-Setup-x.y.z.exe`).
 
-**Depuis le code source** : télécharge le projet puis double-clique sur `scripts\run.bat` (crée l'environnement Python,
-installe tout, crée un raccourci `MA3-IA` sur le Bureau).
+**Sur Mac** : télécharge `MA3-IA-x.y.z.dmg` dans les [Releases](https://github.com/elio7224/ma3-ia/releases),
+ouvre-le et glisse **MA3-IA** dans **Applications**.
+
+> **« MA3-IA ne peut pas être ouvert » / « endommagé » ?** L'app n'est pas encore signée par Apple (notarisation).
+> Au premier lancement : clic droit sur MA3-IA → **Ouvrir** → **Ouvrir**. Si macOS refuse encore :
+> **Réglages Système → Confidentialité et sécurité → Ouvrir quand même**, ou dans le Terminal
+> `xattr -dr com.apple.quarantine /Applications/MA3-IA.app`.
+> Si la console est sur une autre machine du réseau, accepte la demande d'accès au **réseau local** (nécessaire pour l'OSC).
+
+**Depuis le code source** :
+- Windows : télécharge le projet puis double-clique sur `scripts\run.bat` (crée l'environnement Python,
+  installe tout, crée un raccourci `MA3-IA` sur le Bureau).
+- macOS : double-clique sur `scripts/run.command`. Rien à installer avant : s'il n'y a pas de Python récent sur le Mac,
+  le script télécharge un Python 3.12 privé dans le dossier du projet (sans droits administrateur), installe tout et ouvre l'app.
 
 Détails (données, création du `.exe`, tests) : voir [docs/README_BUREAU.md](docs/README_BUREAU.md).
 
 ## Sécurité
-- La clé API est rangée dans le coffre Windows (Credential Manager), jamais dans un fichier du projet.
+- La clé API est rangée dans le coffre du système (Credential Manager sous Windows, Trousseau sous macOS), jamais dans un fichier du projet.
 - OSC est à sens unique : l'IA envoie les commandes mais ne peut pas confirmer qu'elles ont réussi.
   Teste d'abord sur une copie de ton show.
 - Avant une action de masse, le show est sauvegardé automatiquement (réglable dans ⚙ Réglages). Pour annuler :
@@ -69,13 +81,13 @@ Détails (données, création du `.exe`, tests) : voir [docs/README_BUREAU.md](d
 ## Le plugin AI_Index
 Pour lire ton show, l'IA a besoin d'un petit plugin Lua dans grandMA3 : `plugin/ai_index.lua`.
 - **Ce qu'il fait :** à chaque Rescan, l'app le lance par OSC ; il écrit la liste de tes objets (macros, séquences,
-  groupes, presets…) dans `gma3_library\ai_index.json`, que l'IA lit ensuite. **Il ne modifie rien dans ton show.**
+  groupes, presets…) dans `gma3_library/ai_index.json`, que l'IA lit ensuite. **Il ne modifie rien dans ton show.**
 - **Installation automatique** (assistant de premier lancement ou ⚙ Réglages → « Installer automatiquement ») :
   1. l'app lance d'abord le plugin : s'il répond et qu'il est à jour, rien n'est importé (pas de doublon).
      Si c'est une ancienne version, elle la supprime (`Delete Plugin "AI_Index"`) pour la remplacer ; une pastille
      « 🔌 Plugin à mettre à jour » apparaît dans l'en-tête quand c'est le cas.
      S'il n'est pas encore là, la console affiche « Object not found » : c'est normal ;
-  2. sinon elle écrit `ai_index.xml` dans `gma3_library\datapools\plugins` ;
+  2. sinon elle écrit `ai_index.xml` dans `gma3_library/datapools/plugins` ;
   3. elle envoie `Import Plugin Library "ai_index.xml" At Plugin <n>` : le plugin arrive à l'emplacement choisi
      (99 par défaut, modifiable à côté du bouton ; **il doit être vide** dans le pool Plugins) ;
   4. elle le relance pour vérifier que l'index arrive.

@@ -105,7 +105,7 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
 <div id="ov"><div class="pn" id="pn"></div></div>
 <script>
 const API = "/api", $ = id => document.getElementById(id);
-// Langue de l'interface ("fr" ou "en"), fournie par le serveur (réglage « langue », auto = langue de Windows).
+// Langue de l'interface ("fr" ou "en"), fournie par le serveur (réglage « langue », auto = langue du système).
 let LANG = "fr";
 const tr = (fr, en) => LANG === "en" ? en : fr;
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -367,12 +367,14 @@ $("modele").addEventListener("change", () => { try { localStorage.setItem("model
 
 /* ---------- Réglages & premier lancement ---------- */
 const J = async (u, m = "GET", b) => (await fetch(API + u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined })).json();
-const SRC = () => ({ coffre: tr("coffre Windows", "Windows Credential Manager"), variable: tr("variable ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY variable"), fichier: tr("ancien fichier cle_api.txt", "old cle_api.txt file") });
+// Nom du coffre de mots de passe du système (coffre Windows, trousseau macOS), fourni par le serveur.
+const COFFRE = () => (R && R.coffre) || tr("coffre du système", "system keyring");
+const SRC = () => ({ coffre: COFFRE(), variable: tr("variable ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY variable"), fichier: tr("ancien fichier cle_api.txt", "old cle_api.txt file") });
 let R = null;
 const applyTheme = t => {
   t = t === "clair" ? "clair" : "sombre";
   document.documentElement.setAttribute("data-theme", t);
-  try { window.pywebview?.api?.theme?.(t); } catch (e) {}   // barre de titre Windows (app de bureau)
+  try { window.pywebview?.api?.theme?.(t); } catch (e) {}   // barre de titre (app de bureau)
 };
 // L'API pywebview arrive après le chargement : réapplique le thème pour colorer la barre de titre.
 window.addEventListener("pywebviewready", () => applyTheme(document.documentElement.getAttribute("data-theme")));
@@ -388,14 +390,14 @@ function blocCle() {
   <input id="cleIn" type="password" autocomplete="off" placeholder="${tr("sk-ant-…  (colle une nouvelle clé pour la remplacer)", "sk-ant-…  (paste a new key to replace it)")}">
   <div class="acts2"><button class="btn" id="bTestCle">${tr("Tester la clé", "Test key")}</button><button class="btn pri" style="padding:7px 16px" id="bSaveCle">${tr("Enregistrer", "Save")}</button>${c.source === "coffre" ? `<button class="btn" id="bDelCle">${tr("Supprimer", "Delete")}</button>` : ""}</div>
   <div class="msg" id="cleMsg"></div>
-  <div class="hint">${tr("La clé est stockée dans le coffre Windows (jamais dans un fichier ni dans le code) et n'est jamais réaffichée en entier.", "The key is stored in Windows Credential Manager (never in a file or in the code) and is never shown in full again.")}</div>`;
+  <div class="hint">${tr(`La clé est stockée dans le ${COFFRE()} (jamais dans un fichier ni dans le code) et n'est jamais réaffichée en entier.`, `The key is stored in ${COFFRE()} (never in a file or in the code) and is never shown in full again.`)}</div>`;
 }
 function blocOsc() {
   const r = R.reglages;
   return `<div class="row"><div><label>${tr("Adresse IP de la console", "Console IP address")}</label><input id="oscH" value="${esc(r.osc_hote)}"></div><div class="sm"><label>${tr("Port OSC", "OSC port")}</label><input id="oscP" type="number" value="${r.osc_port}"></div></div>
   <div class="acts2"><button class="btn" id="bTestOsc">${tr("Tester la connexion", "Test connection")}</button></div><div class="msg" id="oscMsg"></div>
-  <div class="hint">${tr("grandMA3 onPC sur ce PC : <code>127.0.0.1</code>. Active l'OSC en entrée dans les réglages In &amp; Out de la console, sur le même port (UDP). OSC est à sens unique : l'app ne peut pas confirmer la réception, c'est la console qui doit la montrer.",
-    "grandMA3 onPC on this PC: <code>127.0.0.1</code>. Enable OSC input in the console's In &amp; Out settings, on the same port (UDP). OSC is one-way: the app cannot confirm reception, only the console can show it.")}</div>`;
+  <div class="hint">${tr("grandMA3 onPC sur cet ordinateur : <code>127.0.0.1</code>. Active l'OSC en entrée dans les réglages In &amp; Out de la console, sur le même port (UDP). OSC est à sens unique : l'app ne peut pas confirmer la réception, c'est la console qui doit la montrer.",
+    "grandMA3 onPC on this computer: <code>127.0.0.1</code>. Enable OSC input in the console's In &amp; Out settings, on the same port (UDP). OSC is one-way: the app cannot confirm reception, only the console can show it.")}</div>`;
 }
 function blocPlugin(p) {
   const l = (ok, t) => `<div>${ok ? "✅" : "❌"} ${t}</div>`;
@@ -411,14 +413,14 @@ function blocInstallPlugin(ouvert) {
   ${tr(`<p><b>À quoi il sert :</b> AI_Index est un petit script Lua qui tourne dans grandMA3. À chaque Rescan, l'app lui demande d'écrire la liste de tes objets (macros, séquences, groupes, presets…) dans un fichier que l'IA lit ensuite. <b>Il ne modifie rien dans ton show.</b></p>
   <p><b>Ce que fait « Installer automatiquement » :</b></p><ol style="margin:4px 0 6px 20px">
   <li>l'app lance d'abord le plugin : s'il répond et qu'il est à jour, elle s'arrête là (pas de doublon). S'il n'est pas encore là, la console affiche « Object not found » : <b>c'est normal</b>. Si c'est une <b>ancienne version</b>, elle la supprime (<code>Delete Plugin "AI_Index"</code>) pour la remplacer ;</li>
-  <li>sinon, elle écrit <code>ai_index.xml</code> dans la bibliothèque de la console (<code>gma3_library\\datapools\\plugins</code>) ;</li>
+  <li>sinon, elle écrit <code>ai_index.xml</code> dans la bibliothèque de la console (<code>gma3_library/datapools/plugins</code>) ;</li>
   <li>elle envoie <code>Import Plugin Library "ai_index.xml" At Plugin …</code> : le plugin arrive, sous le nom AI_Index, à l'emplacement choisi ci-dessous dans ton pool Plugins (<b>il doit être vide</b>) ;</li>
   <li>elle le relance pour vérifier que l'index arrive.</li></ol>
   <p><b>À savoir :</b> grandMA3 doit être ouvert avec l'OSC activé ; ça prend jusqu'à 30 secondes ; le plugin fait ensuite partie de ton show, <b>enregistre le show</b> pour le garder ; chaque commande envoyée est visible dans 📜 Journal.</p>`,
   `<p><b>What it does:</b> AI_Index is a small Lua script running inside grandMA3. On every Rescan, the app asks it to write the list of your objects (macros, sequences, groups, presets…) to a file that the AI then reads. <b>It does not change anything in your show.</b></p>
   <p><b>What "Install automatically" does:</b></p><ol style="margin:4px 0 6px 20px">
   <li>the app first runs the plugin: if it answers and is up to date, the app stops there (no duplicate). If it is not there yet, the console shows "Object not found": <b>this is normal</b>. If it is an <b>older version</b>, the app deletes it (<code>Delete Plugin "AI_Index"</code>) to replace it;</li>
-  <li>otherwise, it writes <code>ai_index.xml</code> to the console library (<code>gma3_library\\datapools\\plugins</code>);</li>
+  <li>otherwise, it writes <code>ai_index.xml</code> to the console library (<code>gma3_library/datapools/plugins</code>);</li>
   <li>it sends <code>Import Plugin Library "ai_index.xml" At Plugin …</code>: the plugin lands, named AI_Index, in the slot chosen below in your Plugins pool (<b>it must be empty</b>);</li>
   <li>it runs it again to check that the index arrives.</li></ol>
   <p><b>Good to know:</b> grandMA3 must be open with OSC enabled; it takes up to 30 seconds; the plugin then becomes part of your show, <b>save the show</b> to keep it; every command sent is visible in 📜 Log.</p>`)}</details>
@@ -467,7 +469,7 @@ function lierCle() {
     if (d.ok) { $("cleIn").value = ""; R.cle = d.cle; $("cleEtat").innerHTML = etatCle(d.cle); refresh(); }
   };
   const del = $("bDelCle");
-  if (del) del.onclick = async () => { if (!confirm(tr("Supprimer la clé du coffre Windows ?", "Delete the key from Windows Credential Manager?"))) return; const d = await J("/reglages/cle", "DELETE"); R.cle = d.cle; reglages(); };
+  if (del) del.onclick = async () => { if (!confirm(tr(`Supprimer la clé du ${COFFRE()} ?`, `Delete the key from ${COFFRE()}?`))) return; const d = await J("/reglages/cle", "DELETE"); R.cle = d.cle; reglages(); };
 }
 function lierOsc() {
   $("bTestOsc").onclick = async () => { const d = await J("/reglages/tester-osc", "POST", { hote: $("oscH").value, port: $("oscP").value }); say("oscMsg", d.ok, d.message); };
@@ -521,7 +523,7 @@ async function assistant() {
   const rendre = () => {
     const corps = [
       blocLangue(R.reglages.langue) + `<div class="hint">${tr("Bienvenue ! Cette application pilote ta console grandMA3 avec une IA. Commençons par ta clé API Anthropic (à créer sur console.anthropic.com).", "Welcome! This application controls your grandMA3 console with AI. Let's start with your Anthropic API key (create one at console.anthropic.com).")}</div>` + blocCle(),
-      `<div class="hint">${tr("Indique où se trouve ta console. Si grandMA3 onPC tourne sur ce PC, garde les valeurs par défaut.", "Tell the app where your console is. If grandMA3 onPC runs on this PC, keep the default values.")}</div>` + blocOsc(),
+      `<div class="hint">${tr("Indique où se trouve ta console. Si grandMA3 onPC tourne sur cet ordinateur, garde les valeurs par défaut.", "Tell the app where your console is. If grandMA3 onPC runs on this computer, keep the default values.")}</div>` + blocOsc(),
       `<div class="hint">${tr("Le plugin <code>AI_Index</code> permet à l'IA de lire ton showfile.", "The <code>AI_Index</code> plugin lets the AI read your showfile.")}</div><label>${tr("Dossier gma3_library", "gma3_library folder")}</label><input id="bib" value="${esc(R.reglages.dossier_bibliotheque)}"><div class="acts2"><button class="btn" id="bPlug">${tr("Vérifier", "Check")}</button></div><div class="hint" id="plugEtat">${blocPlugin(R.plugin)}</div>${blocInstallPlugin(true)}`][n];
     ouvrir(`<h2>${tr("🧭 Premier lancement", "🧭 First launch")} — ${ETAPES[n]}</h2><div class="steps">${tr(`Étape ${n + 1} sur 3`, `Step ${n + 1} of 3`)}</div>${corps}
     <div class="foot"><button class="btn" id="bSkip">${n ? tr("← Retour", "← Back") : tr("Passer", "Skip")}</button><button class="btn pri" style="padding:8px 22px" id="bNext">${n < 2 ? tr("Suivant →", "Next →") : tr("Terminer", "Finish")}</button></div>`);
@@ -559,7 +561,7 @@ async function verifierVersion() {
 }
 function blocLangue(choix) {
   const o = (v, t) => `<option value="${v}"${choix === v ? " selected" : ""}>${t}</option>`;
-  return `<label>${tr("Langue / Language", "Language / Langue")}</label><select id="lng">${o("auto", tr("Automatique (langue de Windows)", "Automatic (Windows language)"))}${o("fr", "Français")}${o("en", "English")}</select>`;
+  return `<label>${tr("Langue / Language", "Language / Langue")}</label><select id="lng">${o("auto", tr("Automatique (langue du système)", "Automatic (system language)"))}${o("fr", "Français")}${o("en", "English")}</select>`;
 }
 // Textes écrits en dur dans le HTML : réécrits dans la langue choisie.
 function textesFixes() {

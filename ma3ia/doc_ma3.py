@@ -1,7 +1,7 @@
 """Consultation du manuel officiel grandMA3 (pages des mots-clés) pour l'outil doc_grandma3.
 
 Les pages sont téléchargées à la demande depuis help.malighting.com, converties en texte,
-puis gardées en cache dans %APPDATA%\\ma3-ia\\doc_ma3 (le manuel n'est pas fourni avec le code).
+puis gardées en cache dans le dossier de config (doc_ma3/) (le manuel n'est pas fourni avec le code).
 """
 import html
 import os
