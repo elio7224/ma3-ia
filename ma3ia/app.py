@@ -16,7 +16,7 @@ import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 import tools
 from tools import preparer_et_exporter_show, charger_contexte_temp
 from outils import TOOLS, FUNCS
@@ -189,6 +189,7 @@ def read_index():
 class ChatPayload(BaseModel):
     messages: list
     modele: str = "haiku"
+    ident: str = ""
 
 
 @app.get("/api/history")
@@ -391,8 +392,12 @@ def sync_show():
     return {"status": "success" if any(counts.values()) else "warning", "message": msg, "counts": counts}
 
 
-@app.post("/api/chat")
-def chat(payload: ChatPayload):
+ANNULATIONS = {}          # ident de la requête -> threading.Event (bouton Stop)
+
+
+def _executer_chat(payload: ChatPayload, annulation=None):
+    """Boucle de la demande, sous forme de générateur : elle émet des événements (tour, action) au fil de l'eau
+    et RENVOIE le dictionnaire final. `annulation` (threading.Event) est testée entre deux tours et entre deux outils."""
     sauvegarder_memoire_disque(payload.messages)
     messages_nettoyes = limiter_historique(conserver_memoire_texte(payload.messages))
     for m in messages_nettoyes:
@@ -431,7 +436,16 @@ def chat(payload: ChatPayload):
     historique_ia = messages_nettoyes.copy()
     cout_compte = 0.0
 
+    def arret():
+        n = len(faits)
+        logs.append(tr("⏹ Arrêté à la demande de l'utilisateur.", "⏹ Stopped at the user's request."))
+        return reponse(tr(f"⏹ **Arrêté à ta demande.** {n} action(s) déjà exécutée(s) avant l'arrêt (voir « Actions »).",
+                          f"⏹ **Stopped at your request.** {n} action(s) already executed before stopping (see “Actions”)."))
+
     for _tour in range(max_tours):
+        if annulation is not None and annulation.is_set():
+            return arret()
+        yield {"type": "tour", "n": _tour + 1, "max": max_tours}
         try:
             r = client.messages.create(model=modele_id, max_tokens=MAX_TOKENS, system=system,
                                        tools=TOOLS, messages=historique_ia)
@@ -468,6 +482,8 @@ def chat(payload: ChatPayload):
 
         resultats = []
         for b in appels:
+            if annulation is not None and annulation.is_set():
+                return arret()
             log_entry = f"⚡ Exécution : {b.name}({json.dumps(b.input, ensure_ascii=False)})"
             ident, res_brut = None, None
             try:
@@ -493,6 +509,7 @@ def chat(payload: ChatPayload):
             faits.append({"name": b.name, "input": b.input, "result": res if res_brut is None else res_brut,
                           "error": erreur, "attente": ident})
             actions.append({"name": b.name, "input": b.input, "result": str(res), "error": erreur})
+            yield {"type": "action", "action": actions[-1]}
             bloc = {"type": "tool_result", "tool_use_id": b.id, "content": str(res)}
             if erreur:
                 bloc["is_error"] = True
@@ -501,6 +518,52 @@ def chat(payload: ChatPayload):
         historique_ia.append({"role": "user", "content": resultats})
 
     return reponse(tr(f"⚠️ J'ai atteint la limite de {max_tours} tours d'outils pour une demande.", f"⚠️ I reached the limit of {max_tours} tool rounds for one request."))
+
+
+@app.post("/api/chat")
+def chat(payload: ChatPayload):
+    """Version sans flux (tests, anciens clients) : exécute toute la demande puis renvoie le résultat final."""
+    gen = _executer_chat(payload)
+    try:
+        while True:
+            next(gen)
+    except StopIteration as fin:
+        return fin.value
+
+
+class StopPayload(BaseModel):
+    ident: str
+
+
+@app.post("/api/chat/flux")
+def chat_flux(payload: ChatPayload):
+    """Même chose que /api/chat, mais en flux NDJSON : une ligne JSON par événement, la dernière est {"type": "final"}."""
+    ident = payload.ident or uuid.uuid4().hex
+    annulation = ANNULATIONS[ident] = threading.Event()
+
+    def lignes():
+        gen = _executer_chat(payload, annulation)
+        try:
+            while True:
+                yield json.dumps(next(gen), ensure_ascii=False) + "\n"
+        except StopIteration as fin:
+            yield json.dumps({"type": "final", "data": fin.value}, ensure_ascii=False) + "\n"
+        except Exception as e:
+            yield json.dumps({"type": "erreur", "message": f"{type(e).__name__} : {e}"}, ensure_ascii=False) + "\n"
+        finally:
+            ANNULATIONS.pop(ident, None)
+
+    return StreamingResponse(lignes(), media_type="application/x-ndjson")
+
+
+@app.post("/api/chat/stop")
+def chat_stop(p: StopPayload):
+    """Bouton Stop : la demande s'arrête avant le prochain appel à l'IA ou le prochain outil (jamais au milieu d'un outil)."""
+    ev = ANNULATIONS.get(p.ident)
+    if ev is None:
+        return {"ok": False}
+    ev.set()
+    return {"ok": True}
 
 
 if __name__ == "__main__":

@@ -96,6 +96,7 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
     <div id="msgs"></div>
     <div class="bar">
       <textarea id="inp" rows="1" placeholder="Écris ta demande…  (Entrée = envoyer, Maj+Entrée = nouvelle ligne)"></textarea>
+      <button id="stop" class="btn" style="display:none">⏹ Stop</button>
       <button id="send" class="btn pri">Envoyer</button>
     </div>
   </section>
@@ -108,7 +109,7 @@ const API = "/api", $ = id => document.getElementById(id);
 let LANG = "fr";
 const tr = (fr, en) => LANG === "en" ? en : fr;
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-let hist = [], busy = false;
+let hist = [], busy = false, ident = "";
 
 /* ---------- Markdown (HTML échappé d'abord : sûr) ---------- */
 function inline(t) {
@@ -260,6 +261,30 @@ async function refresh() {
     } else pm.style.display = "none";
   } catch (e) { $("st").textContent = tr("Serveur injoignable", "Server unreachable"); $("dot").className = "dot bad"; }
 }
+// Lit le flux NDJSON de /api/chat/flux : affiche chaque action dès qu'elle est faite, renvoie le résultat final.
+async function lireFlux(r, t) {
+  const lecteur = r.body.getReader(), dec = new TextDecoder(); let tampon = "", final = null;
+  while (true) {
+    const { done, value } = await lecteur.read();
+    if (done) break;
+    tampon += dec.decode(value, { stream: true });
+    let i;
+    while ((i = tampon.indexOf("\n")) >= 0) {
+      const ligne = tampon.slice(0, i).trim(); tampon = tampon.slice(i + 1);
+      if (!ligne) continue;
+      const ev = JSON.parse(ligne);
+      if (ev.type === "action") addAct(ev.action);
+      else if (ev.type === "tour") {
+        let s = t.querySelector("small");
+        if (!s) { s = document.createElement("small"); s.className = "mu"; t.querySelector(".md").appendChild(s); }
+        s.textContent = tr(` tour ${ev.n}/${ev.max}`, ` round ${ev.n}/${ev.max}`);
+      }
+      else if (ev.type === "final") final = ev.data;
+      else if (ev.type === "erreur") throw new Error(ev.message);
+    }
+  }
+  return final;
+}
 async function send(txt) {
   txt = (txt ?? $("inp").value).trim();
   if (!txt || busy) return;
@@ -267,26 +292,34 @@ async function send(txt) {
   addMsg("user", txt); hist.push({ role: "user", content: txt });
   const t = typing();
   try {
-    const r = await fetch(API + "/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: hist, modele: $("modele").value }) });
+    ident = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+    $("stop").style.display = ""; $("stop").disabled = false; $("stop").textContent = "⏹ Stop";
+    const r = await fetch(API + "/chat/flux", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: hist, modele: $("modele").value, ident }) });
     if (!r.ok) throw new Error("HTTP " + r.status);
-    const d = await r.json(); t.remove();
+    const d = await lireFlux(r, t); t.remove();
+    if (!d) throw new Error(tr("réponse interrompue", "response interrupted"));
     if (d.messages) hist = d.messages;
     addMsg("assistant", d.response || tr("(réponse vide)", "(empty response)"));
     (d.en_attente || []).forEach(carteAttente);
     if (d.usage) addCout(d.usage);
     if (d.session) majCout(d.session);
-    if (d.actions && d.actions.length) d.actions.forEach(addAct);
+    if (d.actions && d.actions.length) { /* déjà affichées au fil de l'eau */ }
     else (d.logs || []).forEach(l => addAct({ name: "log", input: {}, result: l, error: l.startsWith("⚠️") }));
     refresh();
   } catch (e) {
     t.remove(); hist.pop();
     addMsg("assistant", tr("⚠️ Connexion impossible avec le serveur : ", "⚠️ Cannot reach the server: ") + e.message + tr(". Redémarre l'application.", ". Restart the application."));
   }
-  busy = false; $("send").disabled = false; $("inp").focus();
+  busy = false; $("send").disabled = false; $("stop").style.display = "none"; $("inp").focus();
 }
 const fit = () => { const i = $("inp"); i.style.height = "auto"; i.style.height = Math.min(i.scrollHeight, 160) + "px"; };
 
 $("send").onclick = () => send();
+$("stop").onclick = async () => {
+  if (!ident) return;
+  $("stop").disabled = true; $("stop").textContent = tr("Arrêt…", "Stopping…");
+  try { await fetch(API + "/chat/stop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ident }) }); } catch (e) {}
+};
 $("inp").addEventListener("input", fit);
 $("inp").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
 $("bLogs").onclick = () => $("logs").classList.toggle("hide");
