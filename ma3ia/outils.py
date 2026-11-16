@@ -3,7 +3,6 @@ from doc_ma3 import doc_grandma3
 from tools import (
     configure_matricks,
     create_macro,
-    generate_fx_grid,
     generate_macros_from_template,
     lire_xml_temp,
     run_command,
@@ -82,20 +81,6 @@ TOOLS = [
         }
     },
     {
-        "name": "generate_fx_grid",
-        "description": "Génère des macros grandMA3 en masse.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "start_macro": {"type": "integer"},
-                "group_start": {"type": "integer"},
-                "group_count": {"type": "integer"},
-                "phases": {"type": "array", "items": {"type": "integer"}}
-            },
-            "required": ["start_macro", "group_start", "group_count", "phases"]
-        }
-    },
-    {
         "name": "generate_macros_from_template",
         "description": (
             "Génère des dizaines ou centaines de macros d'un coup à partir d'un MODÈLE (le code Python fait les boucles, "
@@ -141,7 +126,6 @@ FUNCS = {
     "configure_matricks": configure_matricks,
     "create_macro": create_macro,
     "run_command": run_command,
-    "generate_fx_grid": generate_fx_grid,
     "generate_macros_from_template": generate_macros_from_template
 }
 
