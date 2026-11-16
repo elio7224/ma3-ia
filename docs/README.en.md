@@ -23,6 +23,7 @@ it reads your showfile (index + XML exports) and sends commands to the console o
 ## What it can do
 - Answer questions about your show (macros, sequences, presets, groups, MAtricks, appearances).
 - Create and edit objects: macros (including in bulk), MAtricks, effect grids, free commands.
+  Macros are created through **XML import**: lines may contain quotes (`Lua "…"`) without breaking.
 - Look up the official grandMA3 manual when it is unsure about a syntax.
 - **Approval mode** (optional): the AI prepares the commands without sending them; you check them in the chat,
   then click "Send" or "Cancel". Ideal in rehearsal.

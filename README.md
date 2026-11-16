@@ -23,6 +23,7 @@ il lit ton showfile (index + exports XML) et envoie des commandes à la console 
 ## Ce qu'il sait faire
 - Répondre à des questions sur ton show (macros, séquences, presets, groupes, MAtricks, apparences).
 - Créer et modifier des objets : macros (y compris en masse), MAtricks, grilles d'effets, commandes libres.
+  Les macros sont créées par **import XML** : les lignes peuvent contenir des guillemets (`Lua "…"`) sans être cassées.
 - Consulter le manuel officiel grandMA3 quand il doute d'une syntaxe.
 - **Mode validation** (réglable) : l'IA prépare les commandes sans les envoyer, tu les vérifies dans le chat
   puis tu cliques sur « Envoyer » ou « Annuler ». Idéal en répétition.

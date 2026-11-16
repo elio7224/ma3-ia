@@ -65,3 +65,8 @@ d'un mot-clé sur help.malighting.com et la garde en cache sur le PC de l'utilis
   Version du plugin : `VERSION_PLUGIN` dans `plugin/ai_index.lua` = `VERSION_ATTENDUE` dans `ma3ia/plugin_ma3.py`
   (à augmenter ensemble à chaque modification du plugin ; un test le vérifie).
 - Les résultats bruts des outils (panneau « Actions ») restent en français : ils sont destinés à l'IA.
+- Création de macros : l'app écrit un XML par macro (`ma3ia_tmp_<n>_<ms>.xml`, sans Guid) dans
+  `gma3_library\datapools\macros\`, puis envoie `Import Macro <n> "<fichier>" /Overwrite`. Les guillemets des lignes sont
+  donc protégés par le XML (`&quot;`). Les fichiers temporaires de plus d'une heure sont supprimés au prochain appel
+  (pas tout de suite : en mode validation l'import part plus tard). OSC étant à sens unique, « Succès » veut dire
+  « commandes envoyées », pas « macros vérifiées ». Testé sur la console jusqu'à 200 macros en une génération.
