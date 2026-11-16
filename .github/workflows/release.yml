@@ -61,3 +61,38 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" dist/MA3-IA-Setup-*.exe dist/SHA256SUMS.txt \
             --title "MA3-IA ${GITHUB_REF_NAME}" --notes-file installeur/notes_release.md
+
+  # Version macOS : construite après l'installateur Windows, puis ajoutée à la même Release.
+  macos:
+    needs: installateur
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tests
+        run: |
+          python -m venv venv
+          venv/bin/python -m pip install -q -r requirements-build.txt
+          venv/bin/python -m pytest -q tests
+
+      - name: Construction (application + image disque)
+        run: ./scripts/construire_app.sh
+
+      - name: Empreinte SHA-256
+        run: |
+          cd dist && shasum -a 256 MA3-IA-*.dmg | tee SHA256SUMS-macos.txt
+
+      - name: Attestation de provenance
+        if: ${{ !github.event.repository.private }}
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/MA3-IA-*.dmg
+
+      - name: Ajout à la Release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" dist/MA3-IA-*.dmg dist/SHA256SUMS-macos.txt

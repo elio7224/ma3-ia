@@ -11,19 +11,12 @@ from itertools import product
 from ma3 import MA3
 import ma3 as osc
 from i18n import tr
+from reglages import BIBLIOTHEQUE_DEFAUT, dossiers_temp as _dossiers_temp
 
 ma3 = MA3()
 
-DOSSIERS_TEMP_MA3 = [
-    r"C:\ProgramData\MALightingTechnology\gma3_library\datapools\groups\Temp",
-    r"C:\ProgramData\MALightingTechnology\gma3_library\datapools\layouts\Temp",
-    r"C:\ProgramData\MALightingTechnology\gma3_library\datapools\macros\Temp",
-    r"C:\ProgramData\MALightingTechnology\gma3_library\datapools\sequences\Temp",
-    r"C:\ProgramData\MALightingTechnology\gma3_library\datapools\presets\Temp",
-    r"C:\ProgramData\MALightingTechnology\gma3_library\datapools\shapes\Temp",
-    r"C:\ProgramData\MALightingTechnology\gma3_library\datapools\matricks\Temp",
-    r"C:\ProgramData\MALightingTechnology\gma3_library\appearances\Temp"  # 📌 Ajout indispensable pour les apparences
-]
+# Dossiers Temp où la console exporte les objets (gma3_library par défaut de la plateforme ; remplacés par les réglages).
+DOSSIERS_TEMP_MA3 = _dossiers_temp(BIBLIOTHEQUE_DEFAUT)
 
 
 def appliquer_reglages(hote: str, port: int, bibliotheque: str) -> None:
