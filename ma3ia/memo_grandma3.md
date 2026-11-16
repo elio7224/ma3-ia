@@ -2,7 +2,8 @@
 
 ## Structure d'une commande
 `[Fonction] [Objet] [Numéro] [Options]` — ex : `Store Group 5 /Overwrite`.
-Sans fonction, un objet est sélectionné (`Group 3`) ; `At` applique une valeur.
+Sans fonction, un **groupe ou une fixture** est sélectionné (`Group 3`, `Fixture 5`) ; `At` applique une valeur.
+**Sélectionner un autre objet** (séquence, exécuteur, page, monde, datapool…) : mot-clé `Select` (raccourci `Sel`) — `Select Sequence 2`, `Select Executor 105`, `Select Page 2`. Écrire seulement `Sequence 2` ou `Page 2` ne sélectionne pas : il faut `Select`.
 - Plages : `Thru` (`Fixture 101 Thru 110`), ajout `+`, retrait `-` (`Group 1 + Group 2 - Fixture 105`).
 - Sous-fixtures : `Fixture 101.1`. Presets : `Preset <pool>.<numéro>` (ex `Preset 4.12`).
 - Cues : `Cue 5 Sequence 3`. Exécuteurs : `Page 1.201` (page 1, exécuteur 201). Lignes de macro : `Macro 3.2`.
@@ -16,6 +17,7 @@ Préfixes vus dans les exports : `g` = global, `s` = sélectif, `u` = universel 
 | But | Exemple |
 |---|---|
 | Sélection + valeur | `Group 3 At 50`, `Fixture 1 Thru 10 At Full`, `Group 2 At Preset 4.3` |
+| Sélectionner séquence / page / exécuteur | `Select Sequence 2`, `Select Page 2`, `Select Executor 105` (la séquence sélectionnée est la cible de `Store Cue 4`) |
 | Attribut précis | `Attribute "Pan" At 20` |
 | Enregistrer | `Store Cue 5 Sequence 3`, `Store Preset 4.12`, `Store Group 7` |
 | Options de Store | `/Merge`, `/Overwrite`, `/Remove`, `/NoConfirmation` |

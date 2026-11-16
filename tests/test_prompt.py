@@ -25,3 +25,8 @@ def test_limiter_historique():
     r = config.limiter_historique(msgs, 5)          # commencerait par un message assistant
     assert r[0]["role"] == "user" and len(r) == 4
     assert config.limiter_historique(msgs[:3], 20) == msgs[:3]
+
+
+def test_memo_explique_select():
+    t = config.texte_systeme("")
+    assert "Select Sequence 2" in t and "Select Page 2" in t
