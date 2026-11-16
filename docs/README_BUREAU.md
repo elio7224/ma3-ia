@@ -24,8 +24,9 @@ Les modules de `ma3ia/` s'importent par leur nom (`import tools`) : lancer les s
 - **`scripts\run.bat`** : la première fois, crée le venv et installe les dépendances ; ensuite il ouvre juste l'app.
 - Ou : `venv\Scripts\python.exe ma3ia\desktop.py`.
 - Version navigateur : `scripts\run_web.bat` (http://127.0.0.1:8000).
-- **macOS** : double-clic sur `scripts/run.command` (Python 3.10 ou plus requis : celui de macOS est en 3.9 ;
-  installer Python 3.12 depuis python.org). Ou : `venv/bin/python ma3ia/desktop.py` ; navigateur : `venv/bin/python ma3ia/app.py`.
+- **macOS** : double-clic sur `scripts/run.command`. Il utilise un Python 3.10+ déjà installé (python.org, Homebrew) ;
+  sinon il télécharge `uv` et un Python 3.12 privé dans `.outils/` (ignoré par git, supprimé avec le projet).
+  Ou : `venv/bin/python ma3ia/desktop.py` ; navigateur : `venv/bin/python ma3ia/app.py`.
 
 ## Premier lancement
 Un assistant guide en 3 étapes : clé API → connexion console (IP / port OSC) → plugin `AI_Index`.
@@ -50,7 +51,10 @@ Windows redirige `%APPDATA%` vers `%LOCALAPPDATA%\Packages\PythonSoftwareFoundat
 ## Créer l'installateur
 - Sur ton PC : double-clic sur `scripts\construire_exe.bat` (Inno Setup requis : `winget install JRSoftware.InnoSetup`).
   Résultat : `dist\MA3-IA\MA3-IA.exe` (application) et `dist\MA3-IA-Setup-<version>.exe` (installateur).
-- Pour publier une version : changer `VERSION` dans `ma3ia/version.py`, committer, puis
+- Pour publier une version, **sans commande** : mettre à jour `installeur/notes_release.md` (modifiable sur github.com),
+  puis onglet **Actions → Publier une version → Run workflow**, taper le numéro (ex : `1.5.0`). Le workflow
+  `publier.yml` met `ma3ia/version.py` à jour, crée le commit et le tag, puis lance `release.yml`.
+  À la main, c'est équivalent : changer `VERSION` dans `ma3ia/version.py`, committer, puis
   `git tag v<version>` et `git push origin v<version>`. GitHub Actions (`.github/workflows/release.yml`) lance les tests,
   construit l'installateur et crée la Release avec son empreinte SHA-256 et une attestation de provenance.
 - Choix anti-« faux virus » : PyInstaller en mode dossier (pas d'exe unique), sans compression UPX, fiche de version

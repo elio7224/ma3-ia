@@ -1,0 +1,57 @@
+# Bouton « Publier une version » : onglet Actions → Publier une version → Run workflow → taper le numéro (ex : 1.5.0).
+# Il met ma3ia/version.py à jour, crée le commit « Version x.y.z » et le tag vx.y.z, puis lance la construction
+# de la Release (installateur Windows + .dmg macOS). Aucune commande à taper.
+# Avant : mettre à jour installeur/notes_release.md (modifiable directement sur github.com).
+name: Publier une version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Numéro de la nouvelle version (ex : 1.5.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifie le numéro
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="${VERSION#v}"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Numéro invalide : « $VERSION » (attendu : 1.5.0)"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "La version v$VERSION existe déjà."; exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Met à jour ma3ia/version.py, commit et tag
+        id: tag
+        run: |
+          sed -i -E "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" ma3ia/version.py
+          grep -q "^VERSION = \"$VERSION\"$" ma3ia/version.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Version $VERSION"
+          git tag "v$VERSION"
+          git push origin "HEAD:${GITHUB_REF_NAME}" "v$VERSION"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+  # Un tag poussé par ce workflow ne déclenche pas release.yml tout seul : on l'appelle directement.
+  release:
+    needs: version
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.version.outputs.tag }}
+    secrets: inherit

@@ -64,8 +64,8 @@ open it and drag **MA3-IA** into **Applications**.
 **From source**:
 - Windows: download the project, then double-click `scripts\run.bat` (creates the Python environment,
   installs everything, creates an `MA3-IA` shortcut on the Desktop).
-- macOS: install Python 3.12 ([python.org](https://www.python.org/downloads/macos/)), then double-click
-  `scripts/run.command` (creates the Python environment, installs everything and opens the app).
+- macOS: double-click `scripts/run.command`. Nothing to install first: if the Mac has no recent Python, the script
+  downloads a private Python 3.12 into the project folder (no admin rights), installs everything and opens the app.
 
 More details (data locations, building the `.exe`, tests): see [README_BUREAU.md](README_BUREAU.md) (in French).
 

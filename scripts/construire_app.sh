@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 # 1) Environnement Python + outils de construction (Python 3.10 ou plus)
 if [ ! -x venv/bin/python ]; then
     PY=""
-    for p in python3.13 python3.12 python3.11 python3.10 python3; do
+    for p in python3.13 python3.12 python3.11 python3.10 python3 /opt/homebrew/bin/python3.1[0-9] /usr/local/bin/python3.1[0-9] /Library/Frameworks/Python.framework/Versions/3.1[0-9]/bin/python3; do
         if command -v "$p" >/dev/null 2>&1 && "$p" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
             PY=$p; break
         fi

@@ -16,3 +16,6 @@ docs/ma3/manuel/
 # Usage perso de Claude Code (gardé en local, pas dans le dépôt)
 CLAUDE.md
 .claude/
+
+# Python privé et outil uv téléchargés par scripts/run.command (macOS)
+.outils/
