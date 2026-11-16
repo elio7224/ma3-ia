@@ -31,7 +31,7 @@ def test_refuse_d_ecraser_une_macro_existante(console):
 
 def test_ecraser_true_envoie(console):
     r = _generer(ecraser=True)
-    assert "Succès" in r and "Delete Macro 12 /noconfirm" in console
+    assert "Succès" in r and any(c.startswith("Import Macro 12 ") and c.endswith("/Overwrite") for c in console)
 
 
 def test_plage_libre_envoie(console):

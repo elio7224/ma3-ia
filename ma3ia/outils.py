@@ -89,7 +89,7 @@ TOOLS = [
             "Calculs simples autorisés dans les accolades : {macro+1}, {g+25}, {idx*2}. "
             "Les boucles sont imbriquées, la première est la plus externe. "
             "Une boucle est soit {var, start, count, step} (nombres), soit {var, values:[textes]}. "
-            "Pas de guillemets doubles dans les modèles (guillemets simples uniquement). "
+            "Préfère TOUJOURS les guillemets simples dans les modèles ; n'utilise des guillemets doubles que si la ligne l'exige vraiment. "
             "dry_run=true renvoie un aperçu sans rien envoyer à la console."
         ),
         "input_schema": {
