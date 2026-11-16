@@ -7,7 +7,7 @@ Sans fonction, un **groupe ou une fixture** est sélectionné (`Group 3`, `Fixtu
 - Plages : `Thru` (`Fixture 101 Thru 110`), ajout `+`, retrait `-` (`Group 1 + Group 2 - Fixture 105`).
 - Sous-fixtures : `Fixture 101.1`. Presets : `Preset <pool>.<numéro>` (ex `Preset 4.12`).
 - Cues : `Cue 5 Sequence 3`. Exécuteurs : `Page 1.201` (page 1, exécuteur 201). Lignes de macro : `Macro 3.2`.
-- Noms entre guillemets : `Group "Front"`. Dans une macro envoyée par OSC : guillemets simples à l'intérieur.
+- Noms entre guillemets : `Group "Front"`. Dans une ligne de macro envoyée par OSC : préfère TOUJOURS les guillemets simples à l'intérieur ; des guillemets doubles ne sont à utiliser que si la ligne l'exige vraiment (ils ne sont plus bloqués, mais peuvent casser la commande).
 
 ## Pools de presets
 1 Dimmer · 2 Position · 3 Gobo · 4 Color · 5 Beam · 6 Focus · 7 Control · 8 Shapers · 9 Video · 21–25 All 1 à All 5.

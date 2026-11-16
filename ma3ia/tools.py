@@ -6,6 +6,7 @@ import time
 import shutil
 import operator
 import xml.etree.ElementTree as ET
+from xml.sax.saxutils import escape, unescape
 from itertools import product
 from ma3 import MA3
 import ma3 as osc
@@ -431,21 +432,14 @@ def lire_xml_temp(nom_objet: str = "", partie: int = 1) -> str:
     return texte
 
 
-def _guillemets_doubles(lignes_et_nom: list) -> str | None:
-    """Renvoie le message d'erreur (traduit) si un texte contient un guillemet double, sinon None."""
-    for l in lignes_et_nom:
-        if '"' in l:
-            return tr(f"Erreur : guillemets doubles interdits : {l}.", f"Error: double quotes are not allowed: {l}.")
-    return None
-
-
 def create_macro(number: int = 1, name: str = "Macro Sans Nom", lines: list[str] = None) -> str:
     if lines is None:
         lines = []
-    erreur = _guillemets_doubles(list(lines) + [name])
-    if erreur:
-        return erreur
-    for c in _commandes_macro(number, name, lines):
+    try:
+        commandes = _commandes_macro(number, name, lines)
+    except OSError as e:
+        return tr(f"Erreur : fichier XML de la macro non écrit ({e}).", f"Error: macro XML file not written ({e}).")
+    for c in commandes:
         ma3.send(c)
     return tr(f"Macro {number} créée avec succès ({len(lines)} lignes).", f"Macro {number} created ({len(lines)} lines).")
 
@@ -564,18 +558,50 @@ def _valeurs_boucle(boucle: dict) -> list:
     return [debut + k * pas for k in range(nombre)]
 
 
+PREFIXE_XML_MACRO = "ma3ia_tmp_"     # fichiers XML temporaires d'import de macros
+DUREE_VIE_XML_S = 3600               # nettoyés au prochain appel (pas tout de suite : le mode validation envoie plus tard)
+
+
+def _attr_xml(valeur) -> str:
+    """Valeur d'attribut XML entre guillemets doubles (les " deviennent &quot;, les ' &apos;), comme l'export de la console."""
+    return '"' + escape(str(valeur), {'"': "&quot;", "'": "&apos;"}) + '"'
+
+
+def _xml_macro(name, lines) -> str:
+    """XML d'une macro (format d'export grandMA3 2.5, sans Guid : la console les crée à l'import)."""
+    corps = "".join(f"        <MacroLine Command={_attr_xml(l)}/>\n" for l in lines)
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<GMA3 DataVersion="2.5.1.0">\n'
+            f"    <Macro Name={_attr_xml(name)}>\n{corps}    </Macro>\n</GMA3>\n")
+
+
+def _dossier_macros() -> str:
+    """Dossier datapools/macros de la bibliothèque (le parent du dossier Temp des macros)."""
+    temp = _dossier_section("macros")
+    if not temp:
+        raise OSError(tr("dossier des macros introuvable (réglage de la bibliothèque gma3_library)",
+                         "macros folder not found (gma3_library setting)"))
+    return os.path.dirname(temp)
+
+
+def _nettoyer_xml_anciens(dossier: str) -> None:
+    limite = time.time() - DUREE_VIE_XML_S
+    for f in os.listdir(dossier):
+        if f.startswith(PREFIXE_XML_MACRO) and f.endswith(".xml"):
+            try:
+                if os.path.getmtime(os.path.join(dossier, f)) < limite:
+                    os.remove(os.path.join(dossier, f))
+            except OSError:
+                pass
+
+
 def _commandes_macro(number, name, lines):
-    cmds = [
-        f"Delete Macro {number} /noconfirm",
-        f"Store Macro {number}",
-        f"ChangeDestination Macro {number}"
-    ]
-    for i, line in enumerate(lines, start=1):
-        cmds.append("Insert")   # une macro neuve n'a aucune ligne : Insert crée la ligne i avant de la remplir
-        cmds.append(f'Set {i} Property "Command" "{line}"')
-    cmds.append("ChangeDestination Root")
-    cmds.append(f'Label Macro {number} "{name}"')
-    return cmds
+    """Écrit le XML de la macro dans le dossier d'import et renvoie la commande qui l'importe (guillemets sans collision)."""
+    dossier = _dossier_macros()
+    _nettoyer_xml_anciens(dossier)
+    base = f"{PREFIXE_XML_MACRO}{number}_{int(time.time() * 1000)}"
+    with open(os.path.join(dossier, base + ".xml"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(_xml_macro(name, lines))
+    return [f'Import Macro {number} "{base}" /Overwrite']
 
 
 SEUIL_APERCU_OBLIGATOIRE = 50     # au-delà : un dry_run identique doit avoir été fait avant l'envoi
@@ -631,9 +657,6 @@ def generate_macros_from_template(start_macro: int = 1, name_template: str = "Ma
             variables["idx"] = idx
             nom = _rendre(name_template, variables)
             lignes = [_rendre(t, variables) for t in line_templates]
-            erreur = _guillemets_doubles(lignes + [nom])
-            if erreur:
-                return erreur
             macros.append((variables["macro"], nom, lignes))
     except Exception as e:
         return tr(f"Erreur de modèle : {e}", f"Template error: {e}")
@@ -668,7 +691,12 @@ def generate_macros_from_template(start_macro: int = 1, name_template: str = "Ma
     note = sauvegarder_avant_masse()
     delai = max(0, delai_ms) / 1000.0
     for num, nom, lignes in macros:
-        for c in _commandes_macro(num, nom, lignes):
+        try:
+            commandes = _commandes_macro(num, nom, lignes)
+        except OSError as e:
+            return tr(f"Erreur : fichier XML de la macro {num} non écrit ({e}). Les macros précédentes ont déjà été envoyées.",
+                      f"Error: XML file of macro {num} not written ({e}). The previous macros were already sent.")
+        for c in commandes:
             ma3.send(c)
             if delai and not osc.en_capture():
                 time.sleep(delai)
@@ -692,7 +720,7 @@ def nettoyer_macros_existantes(start_macro: int, end_macro: int) -> str:
                 contenu = f.read()
                 
             matchs = re.findall(r'(?:Command|command)="([^"]*)"', contenu)
-            lignes_valides = [m for m in matchs if m.strip()]
+            lignes_valides = [unescape(m, {"&quot;": '"', "&apos;": "'"}) for m in matchs if m.strip()]   # le XML écrit " en &quot;
             
             if lignes_valides:
                 resultat = create_macro(num, nom, lignes_valides)
