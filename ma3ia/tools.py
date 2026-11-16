@@ -475,11 +475,15 @@ def configure_matricks(number: int = 1, name: str = "MAtricks", xgroup: int = No
 
 SAUVEGARDE_INTERVALLE_S = 120          # pas plus d'une sauvegarde toutes les 2 min (préserve les 10 copies de la console)
 _derniere_sauvegarde = [0.0]
-_MOTIF_MASSE = re.compile(r"^\s*(delete|store|copy|move)\b.*\bthru\b", re.IGNORECASE)
+_MOTIF_MASSE = re.compile(
+    r"^\s*(delete|store|copy|move)\b.*\bthru\b"      # plage : Delete Macro 1 Thru 50
+    r"|^\s*delete\b.*(\+|\*)"                        # liste ou joker : Delete Macro 1 + 5 + 9, Delete Sequence *
+    r"|^\s*store\b.*/overwrite\b",                   # écrasement : Store Group 5 /Overwrite
+    re.IGNORECASE)
 
 
 def est_commande_de_masse(cmd: str) -> bool:
-    """Delete / Store / Copy / Move sur une plage (… Thru …)."""
+    """Commande destructrice sur plusieurs objets ou en écrasement : plage (Thru), liste (+), joker (*), /Overwrite."""
     return bool(_MOTIF_MASSE.search(cmd or ""))
 
 

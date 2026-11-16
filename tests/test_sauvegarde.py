@@ -57,3 +57,24 @@ def test_resultats_traduits_en_anglais(console, monkeypatch):
     client = ma3.MA3("127.0.0.1", 9)
     monkeypatch.setattr(client, "client", type("U", (), {"send_message": lambda self, a, c: None})())
     assert client.send("Go+ Sequence 1") == "sent"
+
+
+@pytest.mark.parametrize("cmd", [
+    "Delete Macro 1 + 5 + 9 /NoConfirmation",
+    "Delete Sequence *",
+    "delete group 1+2",
+    "Store Group 5 /Overwrite",
+    "Store Preset 4.3 /overwrite /NoConfirmation",
+])
+def test_autres_commandes_destructrices_sauvegardent(console, cmd):
+    r = tools.run_command(cmd)
+    assert console == ["SaveShow", cmd] and "Backup Shows" in r
+
+
+@pytest.mark.parametrize("cmd", [
+    "Store Group 5", "Store Macro 3 /Merge", "Label Macro 3 \"Test\"", "Go+ Sequence 1",
+    "Delete Macro 3 /NoConfirmation", "ClearAll", "Group 1 + Group 2 At 50",
+])
+def test_commandes_anodines_sans_sauvegarde(console, cmd):
+    tools.run_command(cmd)
+    assert console == [cmd]
