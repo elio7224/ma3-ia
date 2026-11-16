@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import threading
 import time
@@ -118,6 +119,64 @@ def conserver_memoire_texte(messages_raw):
     return messages_propres
 
 
+# ---------------------------------------------------------------- résumé des actions gardé dans l'historique
+
+RESUME_MAX_LIGNES = 12        # lignes d'actions par tour (le reste est compté, pas détaillé)
+RESUME_MAX_PARAM = 40         # caractères max par valeur de paramètre
+RESUME_MAX_PARAMS_TOTAL = 140
+RESUME_MAX_RESULTAT = 120
+RESUME_DEBUT, RESUME_FIN = "[ACTIONS]", "[/ACTIONS]"   # marqueurs neutres (l'interface masque le bloc au rechargement)
+_MARQUE_ATTENTE = re.compile(r"\{#([0-9a-f]+)\}")
+STATUT_ATTENTE = {}           # id -> "envoyee" | "annulee" (les ids encore dans EN_ATTENTE sont en attente)
+
+
+def _abreger(texte, n):
+    texte = " ".join(str(texte).split())
+    return texte if len(texte) <= n else texte[:max(n - 1, 1)] + "…"
+
+
+def _params_courts(entree):
+    if not isinstance(entree, dict):
+        return _abreger(entree, RESUME_MAX_PARAMS_TOTAL)
+    morceaux = [f"{k}={_abreger(json.dumps(v, ensure_ascii=False), RESUME_MAX_PARAM)}" for k, v in entree.items()]
+    return _abreger(", ".join(morceaux), RESUME_MAX_PARAMS_TOTAL)
+
+
+def resumer_actions(faits):
+    """Bloc texte court décrivant les outils appelés pendant un tour ('' s'il n'y en a pas).
+    `faits` : liste de dicts {name, input, result, error, attente}."""
+    if not faits:
+        return ""
+    lignes = []
+    for f in faits[:RESUME_MAX_LIGNES]:
+        ligne = f"- {f['name']}({_params_courts(f['input'])}) ➔ "
+        if f.get("error"):
+            ligne += tr("ERREUR : ", "ERROR: ")
+        ligne += _abreger(str(f["result"]).split("\n", 1)[0] if f["result"] else "", RESUME_MAX_RESULTAT) or "OK"
+        if f.get("attente"):
+            ligne += " " + tr("[commandes préparées, NON envoyées, statut :", "[commands prepared, NOT sent, status:") + f" {{#{f['attente']}}}]"
+        lignes.append(ligne)
+    if len(faits) > RESUME_MAX_LIGNES:
+        n = len(faits) - RESUME_MAX_LIGNES
+        lignes.append(tr(f"- … et {n} autre(s) action(s)", f"- … and {n} more action(s)"))
+    return f"\n\n{RESUME_DEBUT}\n" + "\n".join(lignes) + f"\n{RESUME_FIN}"
+
+
+def resoudre_attentes(texte):
+    """Remplace les marques {#id} par le statut actuel (envoyée / annulée / en attente) au moment de l'envoi à l'IA."""
+    def statut(m):
+        ident = m.group(1)
+        if ident in EN_ATTENTE:
+            return tr("toujours EN ATTENTE", "still PENDING")
+        etat = STATUT_ATTENTE.get(ident)
+        if etat == "envoyee":
+            return tr("ENVOYÉES", "SENT")
+        if etat == "annulee":
+            return tr("ANNULÉES", "CANCELLED")
+        return tr("inconnu (app relancée)", "unknown (app restarted)")
+    return _MARQUE_ATTENTE.sub(statut, texte)
+
+
 @app.get("/")
 def read_index():
     page = os.path.join(reglages.dossier_ressources(), "web", "index.html")
@@ -199,13 +258,15 @@ def envoyer_attente(ident: str):
                 time.sleep(1.0)
             else:
                 time.sleep(DELAI_ENVOI_S)
+    STATUT_ATTENTE[ident] = "envoyee"
     n = len(lot["commandes"])
     return {"ok": True, "envoyees": n, "message": tr(f"{n} commande(s) envoyée(s).", f"{n} command(s) sent.")}
 
 
 @app.post("/api/attente/{ident}/annuler")
 def annuler_attente(ident: str):
-    EN_ATTENTE.pop(ident, None)
+    if EN_ATTENTE.pop(ident, None) is not None:
+        STATUT_ATTENTE[ident] = "annulee"
     return {"ok": True, "message": tr("Annulé : rien n'a été envoyé.", "Cancelled: nothing was sent.")}
 
 
@@ -334,14 +395,19 @@ def sync_show():
 def chat(payload: ChatPayload):
     sauvegarder_memoire_disque(payload.messages)
     messages_nettoyes = limiter_historique(conserver_memoire_texte(payload.messages))
+    for m in messages_nettoyes:
+        if m["role"] == "assistant" and "{#" in m["content"]:
+            m["content"] = resoudre_attentes(m["content"])
     cle_modele, modele_id = choisir_modele(payload.modele)
     max_tours = reglages.charger()["max_tours_outils"]
     usage = usage_vide()
-    logs, actions, attentes = [], [], []
+    logs, actions, attentes, faits = [], [], [], []
     validation = reglages.charger()["validation_manuelle"]
 
     def reponse(texte, avec_historique=True):
-        msgs = payload.messages + [{"role": "assistant", "content": texte}] if avec_historique else payload.messages
+        # L'historique garde le texte + un résumé des actions ; l'interface affiche seulement `texte`.
+        stocke = texte + resumer_actions(faits)
+        msgs = payload.messages + [{"role": "assistant", "content": stocke}] if avec_historique else payload.messages
         if avec_historique:
             sauvegarder_memoire_disque(msgs)
         return {"response": texte, "logs": logs, "actions": actions, "messages": msgs,
@@ -403,6 +469,7 @@ def chat(payload: ChatPayload):
         resultats = []
         for b in appels:
             log_entry = f"⚡ Exécution : {b.name}({json.dumps(b.input, ensure_ascii=False)})"
+            ident, res_brut = None, None
             try:
                 if validation and b.name in OUTILS_ECRITURE:
                     # Mode validation : l'outil tourne normalement mais ses commandes sont gardées, pas envoyées.
@@ -412,6 +479,7 @@ def chat(payload: ChatPayload):
                         ident = uuid.uuid4().hex[:10]
                         EN_ATTENTE[ident] = {"outil": b.name, "commandes": list(cmds)}
                         attentes.append({"id": ident, "outil": b.name, "commandes": list(cmds)})
+                        res_brut = res
                         res = tr(f"⏸ MODE VALIDATION : {len(cmds)} commande(s) préparée(s), PAS ENVOYÉES. L'utilisateur doit "
                                  "les vérifier et cliquer sur « Envoyer » dans le chat.",
                                  f"⏸ APPROVAL MODE: {len(cmds)} command(s) prepared, NOT SENT. The user must check them "
@@ -422,6 +490,8 @@ def chat(payload: ChatPayload):
             except Exception as e:
                 res, erreur = f"Erreur d'exécution de l'outil : {type(e).__name__} : {e}", True
             logs.append(log_entry + f" ➔ {res}")
+            faits.append({"name": b.name, "input": b.input, "result": res if res_brut is None else res_brut,
+                          "error": erreur, "attente": ident})
             actions.append({"name": b.name, "input": b.input, "result": str(res), "error": erreur})
             bloc = {"type": "tool_result", "tool_use_id": b.id, "content": str(res)}
             if erreur:

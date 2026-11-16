@@ -556,7 +556,7 @@ $("ov").addEventListener("mousedown", e => { if (e.target === $("ov")) fermer();
   try {
     const d = await (await fetch(API + "/history")).json();
     hist = d.messages || [];
-    hist.forEach(m => { if (typeof m.content === "string") addMsg(m.role, m.content); });
+    hist.forEach(m => { if (typeof m.content === "string") addMsg(m.role, m.content.replace(/\n*\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/, "")); });
   } catch (e) {}
   if (!hist.length) welcome();
   try { localStorage.removeItem("coutSession"); } catch (e) {}   // ancien compteur, remplacé par celui du serveur
