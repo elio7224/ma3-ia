@@ -239,7 +239,7 @@ def etat_session():
 
 # ---------------------------------------------------------------- mode validation (commandes en attente)
 
-OUTILS_ECRITURE = {"create_macro", "configure_matricks", "run_command", "generate_fx_grid", "generate_macros_from_template"}
+OUTILS_ECRITURE = {"create_macro", "configure_matricks", "run_command", "generate_macros_from_template"}
 EN_ATTENTE = {}            # id -> {"outil", "commandes"} : préparées par l'IA, pas encore envoyées
 DELAI_ENVOI_S = 0.01
 

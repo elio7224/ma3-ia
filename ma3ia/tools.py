@@ -517,26 +517,6 @@ def run_command(cmd: str = "") -> str:
     return ma3.send(cmd)
 
 
-def generate_fx_grid(start_macro: int = 1, group_start: int = 1, group_count: int = 1, phases: list[int] = None) -> str:
-    if phases is None:
-        phases = [0]
-    note = sauvegarder_avant_masse()
-
-    current_macro = start_macro
-    total_created = 0
-    for g in range(group_start, group_start + group_count):
-        for phase in phases:
-            macro_name = f"G{g} Phase {phase}°"
-            lines = [
-                f"Selection Group {g}",
-                f"Attribute 'Pan' Property 'XPhase' '{phase}'"
-            ]
-            create_macro(current_macro, macro_name, lines)
-            current_macro += 1
-            total_created += 1
-    return f"{note}\n" + tr(f"Succès ! {total_created} macros générées.", f"Done: {total_created} macros generated.")
-
-
 MAX_MACROS_PAR_APPEL = 1000
 
 _OPS = {
