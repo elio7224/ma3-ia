@@ -431,17 +431,21 @@ def lire_xml_temp(nom_objet: str = "", partie: int = 1) -> str:
     return texte
 
 
+def _guillemets_doubles(lignes_et_nom: list) -> str | None:
+    """Renvoie le message d'erreur (traduit) si un texte contient un guillemet double, sinon None."""
+    for l in lignes_et_nom:
+        if '"' in l:
+            return tr(f"Erreur : guillemets doubles interdits : {l}.", f"Error: double quotes are not allowed: {l}.")
+    return None
+
+
 def create_macro(number: int = 1, name: str = "Macro Sans Nom", lines: list[str] = None) -> str:
     if lines is None:
         lines = []
-        
-    cmds = [f"Store Macro {number}", f"ChangeDestination Macro {number}"]
-    for i, line in enumerate(lines, start=1):
-        cmds.append("Insert")
-        cmds.append(f'Set {i} Property "Command" "{line}"')
-    cmds.append("ChangeDestination Root")
-    cmds.append(f'Label Macro {number} "{name}"')
-    for c in cmds:
+    erreur = _guillemets_doubles(list(lines) + [name])
+    if erreur:
+        return erreur
+    for c in _commandes_macro(number, name, lines):
         ma3.send(c)
     return tr(f"Macro {number} créée avec succès ({len(lines)} lignes).", f"Macro {number} created ({len(lines)} lines).")
 
@@ -622,9 +626,9 @@ def generate_macros_from_template(start_macro: int = 1, name_template: str = "Ma
             variables["idx"] = idx
             nom = _rendre(name_template, variables)
             lignes = [_rendre(t, variables) for t in line_templates]
-            for l in lignes + [nom]:
-                if '"' in l:
-                    return tr(f"Erreur : guillemets doubles interdits : {l}.", f"Error: double quotes are not allowed: {l}.")
+            erreur = _guillemets_doubles(lignes + [nom])
+            if erreur:
+                return erreur
             macros.append((variables["macro"], nom, lignes))
     except Exception as e:
         return tr(f"Erreur de modèle : {e}", f"Template error: {e}")
@@ -666,7 +670,10 @@ def nettoyer_macros_existantes(start_macro: int, end_macro: int) -> str:
             lignes_valides = [m for m in matchs if m.strip()]
             
             if lignes_valides:
-                create_macro(num, nom, lignes_valides)
+                resultat = create_macro(num, nom, lignes_valides)
+                if resultat.startswith(("Erreur", "Error")):
+                    print(f"Macro {num} ignorée : {resultat}")
+                    continue
                 nettoyees += 1
         except Exception as e:
             print(f"Erreur nettoyage macro {num} : {e}")
