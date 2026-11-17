@@ -117,27 +117,46 @@ class ApiFenetre:
             webbrowser.open(url)
 
 
+def page_chargement(theme: str) -> str:
+    """Page affichée tout de suite à l'ouverture de la fenêtre, le temps que le serveur local démarre."""
+    from i18n import tr
+    fond, texte = ("#f4f5fa", "#1b1e2b") if theme == "clair" else ("#0b0d14", "#e8eaf0")
+    return (f"<body style='margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;"
+            f"background:{fond};color:{texte};font-family:Segoe UI,system-ui,sans-serif'>"
+            "<style>@keyframes t{to{transform:rotate(360deg)}}"
+            ".r{width:44px;height:44px;border:4px solid #8886;border-top-color:#6c8cff;border-radius:50%;animation:t .9s linear infinite}</style>"
+            "<div class='r'></div>"
+            f"<h2 style='margin:22px 0 6px;font-weight:600'>{tr('MA3-IA démarre…', 'MA3-IA is starting…')}</h2>"
+            f"<div style='opacity:.65;font-size:14px'>{tr('Chargement en cours, quelques secondes…', 'Loading, this takes a few seconds…')}</div>")
+
+
 def main():
     import webview
     identifier_application()
     icone = ICONE if os.path.isfile(ICONE) else None
+    theme = reglages.charger().get("theme", "sombre")
     port = port_libre()
-    serveur = demarrer_serveur(port)
-    if not attendre_serveur(port):
-        from i18n import tr
-        f = webview.create_window("MA3-IA", html="<body style='background:#0b0d14;color:#e8eaf0;font-family:sans-serif;padding:40px'>"
-                                  + tr("<h2>Le serveur local n'a pas démarré.</h2><p>Relance l'application.</p>",
-                                       "<h2>The local server did not start.</h2><p>Restart the application.</p>"))
-        f.events.shown += lambda: colorer_barre_titre(f, "sombre")
-        webview.start(icon=icone)
-        return
+    etat = {}
     api = ApiFenetre()
-    f = webview.create_window("grandMA3 AI Control", f"http://127.0.0.1:{port}/", width=1280, height=820,
+    # La fenêtre s'ouvre tout de suite sur un écran de chargement ; le serveur démarre en parallèle.
+    f = webview.create_window("grandMA3 AI Control", html=page_chargement(theme), width=1280, height=820,
                               min_size=(900, 600), background_color="#0b0d14", text_select=True, js_api=api)
     api._fenetre = f
-    f.events.shown += lambda: colorer_barre_titre(f, reglages.charger().get("theme", "sombre"))
-    webview.start(icon=icone)          # bloque jusqu'à la fermeture de la fenêtre
-    serveur.should_exit = True
+    f.events.shown += lambda: colorer_barre_titre(f, theme)
+
+    def demarrer():
+        etat["serveur"] = demarrer_serveur(port)
+        if attendre_serveur(port):
+            f.load_url(f"http://127.0.0.1:{port}/")
+        else:
+            from i18n import tr
+            f.load_html("<body style='background:#0b0d14;color:#e8eaf0;font-family:sans-serif;padding:40px'>"
+                        + tr("<h2>Le serveur local n'a pas démarré.</h2><p>Relance l'application.</p>",
+                             "<h2>The local server did not start.</h2><p>Restart the application.</p>"))
+
+    webview.start(demarrer, icon=icone)          # bloque jusqu'à la fermeture de la fenêtre
+    if etat.get("serveur"):
+        etat["serveur"].should_exit = True
 
 
 if __name__ == "__main__":
