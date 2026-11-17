@@ -43,7 +43,7 @@ main{flex:1;display:flex;min-height:0}
 .md blockquote.ok{border-left-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--bg))}
 .md blockquote.bad{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--bg))}
 .md li>ul,.md li>ol{margin-top:8px}.md li>ul{list-style:circle}
-.md>p:first-child{font-size:1rem}.md p+h2,.md p+h3{margin-top:30px}
+.md>p:first-child{font-size:1rem}.md p.intitule{font-weight:600;margin-top:24px;margin-bottom:-6px}.md p+h2,.md p+h3{margin-top:30px}
 .md hr{border:0;border-top:1px solid var(--bd)}.md a{color:var(--ac)}
 .tw{overflow-x:auto;border:1px solid var(--bd);border-radius:var(--r)}
 table{border-collapse:collapse;width:100%;font-size:.86rem}
@@ -137,7 +137,12 @@ function md(src) {
   src = String(src).replace(/```(\w*)\n?([\s\S]*?)```/g, (_, l, c) => { blocks.push({ l, c: c.replace(/\n$/, "") }); return "\n\u0001" + (blocks.length - 1) + "\u0001\n"; });
   const lines = src.split("\n"), li = /^([-*•]|\d+[.)])\s+/;
   let out = "", i = 0, para = [], m;
-  const flush = () => { if (para.length) { out += "<p>" + inline(para.join("\n")).replace(/\n/g, "<br>") + "</p>"; para = []; } };
+  const flush = () => {
+    if (!para.length) return;
+    // Courte ligne qui finit par « : » (ex. « À vérifier : ») = intitulé de la liste qui suit.
+    const intitule = para.length === 1 && para[0].trim().length <= 60 && /[:：]$/.test(para[0].trim());
+    out += (intitule ? '<p class="intitule">' : "<p>") + inline(para.join("\n")).replace(/\n/g, "<br>") + "</p>"; para = [];
+  };
   while (i < lines.length) {
     const L = lines[i], T = L.trim();
     if (!T) { flush(); i++; continue; }
