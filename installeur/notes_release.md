@@ -1,3 +1,15 @@
+## Nouveautés de la 1.5.3 / What's new in 1.5.3
+
+- **Messages d'erreur plus clairs** (français et anglais) : pas de connexion Internet, délai dépassé, crédit Anthropic
+  épuisé, API surchargée, clé sans droit sur le modèle.
+- **Console éteinte ou mauvais port OSC** : le message indique quoi vérifier (console allumée, plugin AI_Index, adresse
+  et port dans les Réglages).
+
+*English summary:* clearer, translated error messages for no network, timeouts, exhausted credit, overloaded API, and
+a console that does not answer (what to check: console on, AI_Index plugin, OSC address and port).
+
+---
+
 ## Nouveautés de la 1.5.2 / What's new in 1.5.2
 
 - **Interface épurée** : palette graphite avec un seul accent doré, plus de dégradés, de bulles ni d'avatar ;
