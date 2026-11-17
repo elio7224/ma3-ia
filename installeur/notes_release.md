@@ -1,3 +1,15 @@
+## Nouveautés de la 1.5.4 / What's new in 1.5.4
+
+- **Réponses de l'IA mieux mises en page** : titres, puces aérées, étapes numérotées en pastilles, encarts colorés
+  (⚠️ ✅ ❌), tableaux plus lisibles, texte plus confortable.
+- Bouton **Copier** sur chaque réponse ; le bloc interne `[ACTIONS]` n'est plus affiché dans le chat.
+- L'IA structure maintenant ses réponses (conclusion d'abord, étapes, résultats, risques).
+
+*English summary:* answers are much better laid out (headings, numbered steps, coloured callouts, clearer tables),
+with a Copy button on each answer; the internal `[ACTIONS]` block is no longer shown.
+
+---
+
 ## Nouveautés de la 1.5.3 / What's new in 1.5.3
 
 - **Messages d'erreur plus clairs** (français et anglais) : pas de connexion Internet, délai dépassé, crédit Anthropic
