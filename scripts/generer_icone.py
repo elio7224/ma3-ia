@@ -1,6 +1,6 @@
 # Usage : python scripts/generer_icone.py ma3ia/assets/ma3ia.ico   (Windows)
 #         python scripts/generer_icone.py build/ma3ia.icns           (macOS, fait par scripts/construire_app.sh)
-"""Génère l'icône sans dépendance : carré violet arrondi + faisceau de projecteur.
+"""Génère l'icône sans dépendance : carré graphite arrondi + faisceau de projecteur tungstène.
 .ico : 16 à 256 px, PNG intégrés. .icns : 16 à 1024 px, PNG intégrés (types icp4…ic10)."""
 import math, struct, sys, zlib
 
@@ -17,17 +17,15 @@ def png(n):
                     # carré arrondi
                     r = .2; dx = max(abs(u - .5) - (.5 - r), 0); dy = max(abs(v - .5) - (.5 - r), 0)
                     if dx * dx + dy * dy > r * r: continue
-                    t = (u + v) / 2  # dégradé #8b5cf6 -> #5b21b6
-                    c = [0x8b + (0x5b - 0x8b) * t, 0x5c + (0x21 - 0x5c) * t, 0xf6 + (0xb6 - 0xf6) * t]
+                    c = [0x1b, 0x1c, 0x20]  # graphite uni
                     # projecteur en haut, faisceau trapézoïdal vers le bas
                     lamp = (u - .5) ** 2 / .018 + (v - .24) ** 2 / .006 <= 1
                     w = .07 + (v - .28) * .62
                     beam = .28 <= v <= .84 and abs(u - .5) <= w
-                    if lamp: c = [255, 255, 255]
+                    if lamp: c = [0xe3, 0xc0, 0x7a]
                     elif beam:
-                        a = .85 - (v - .28) * .9
-                        c = [c[i] + (255 - c[i]) * a for i in range(3)]
-                        if v > .76: c = [c[i] + ((0xf5, 0x9e, 0x0b)[i] - c[i]) * .9 for i in range(3)]  # sol éclairé ambre
+                        a = .8 - (v - .28) * 1.1
+                        c = [c[i] + ((0xe3, 0xc0, 0x7a)[i] - c[i]) * a for i in range(3)]
                     acc[0] += c[0]; acc[1] += c[1]; acc[2] += c[2]; acc[3] += 255
             k = S * S
             row += bytes([int(acc[0] / k), int(acc[1] / k), int(acc[2] / k), int(acc[3] / k)]) if acc[3] else bytes(4)
