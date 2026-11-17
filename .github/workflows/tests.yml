@@ -1,17 +1,19 @@
-# Tests sur Windows et macOS à chaque push et pull request (sans console ni vraie API).
+# Tests sur Windows à chaque push et pull request (sans console ni vraie API).
+# macOS n'est testé qu'à la main (Actions > Tests > Run workflow) : ses runners sont souvent saturés et annulent le job.
 name: Tests
 
 on:
   push:
     branches: ["**"]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   tests:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","macos-latest"]' || '["windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
