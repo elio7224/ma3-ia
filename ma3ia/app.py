@@ -130,6 +130,31 @@ _MARQUE_ATTENTE = re.compile(r"\{#([0-9a-f]+)\}")
 STATUT_ATTENTE = {}           # id -> "envoyee" | "annulee" (les ids encore dans EN_ATTENTE sont en attente)
 
 
+def message_erreur_api(e: Exception) -> str:
+    """Message clair (fr/en) pour une erreur de l'API Anthropic ; jamais de texte brut de la bibliothèque seul."""
+    if isinstance(e, anthropic.AuthenticationError):
+        return tr("⚠️ Clé API refusée. Vérifie-la dans ⚙ Réglages.", "⚠️ API key rejected. Check it in ⚙ Settings.")
+    if isinstance(e, anthropic.PermissionDeniedError):
+        return tr("⚠️ Cette clé n'a pas le droit d'utiliser ce modèle. Vérifie ton compte Anthropic.",
+                  "⚠️ This key is not allowed to use this model. Check your Anthropic account.")
+    if isinstance(e, anthropic.RateLimitError):
+        return tr("⚠️ Limite de débit atteinte. Attends une minute.", "⚠️ Rate limit reached. Wait a minute.")
+    if isinstance(e, anthropic.APITimeoutError):
+        return tr("⚠️ L'API Anthropic n'a pas répondu à temps. Réessaie dans un instant.",
+                  "⚠️ The Anthropic API did not answer in time. Try again in a moment.")
+    if isinstance(e, anthropic.APIConnectionError):
+        return tr("⚠️ Connexion à l'API Anthropic impossible : vérifie ta connexion Internet (ou ton pare-feu / proxy).",
+                  "⚠️ Cannot reach the Anthropic API: check your Internet connection (or firewall / proxy).")
+    texte = str(e).lower()
+    if isinstance(e, anthropic.BadRequestError) and ("credit balance" in texte or "billing" in texte):
+        return tr("⚠️ Crédit Anthropic épuisé : ajoute des crédits sur console.anthropic.com (Plans & Billing).",
+                  "⚠️ Anthropic credit exhausted: add credits at console.anthropic.com (Plans & Billing).")
+    if isinstance(e, anthropic.APIStatusError) and e.status_code in (500, 502, 503, 529):
+        return tr("⚠️ L'API Anthropic est surchargée ou en panne. Réessaie dans quelques minutes.",
+                  "⚠️ The Anthropic API is overloaded or down. Try again in a few minutes.")
+    return tr(f"⚠️ Erreur lors de l'appel API : {type(e).__name__} : {e}", f"⚠️ API call error: {type(e).__name__}: {e}")
+
+
 def _abreger(texte, n):
     texte = " ".join(str(texte).split())
     return texte if len(texte) <= n else texte[:max(n - 1, 1)] + "…"
@@ -449,12 +474,8 @@ def _executer_chat(payload: ChatPayload, annulation=None):
         try:
             r = client.messages.create(model=modele_id, max_tokens=MAX_TOKENS, system=system,
                                        tools=TOOLS, messages=historique_ia)
-        except anthropic.AuthenticationError:
-            return reponse(tr("⚠️ Clé API refusée. Vérifie-la dans ⚙ Réglages.", "⚠️ API key rejected. Check it in ⚙ Settings."), avec_historique=False)
-        except anthropic.RateLimitError:
-            return reponse(tr("⚠️ Limite de débit atteinte. Attends une minute.", "⚠️ Rate limit reached. Wait a minute."), avec_historique=False)
         except Exception as e:
-            return reponse(tr(f"⚠️ Erreur lors de l'appel API : {type(e).__name__} : {e}", f"⚠️ API call error: {type(e).__name__}: {e}"), avec_historique=False)
+            return reponse(message_erreur_api(e), avec_historique=False)
 
         ajouter_usage(usage, r.usage)
         cout_requete = resume_usage(usage, cle_modele)["cout_usd"]
@@ -549,7 +570,7 @@ def chat_flux(payload: ChatPayload):
         except StopIteration as fin:
             yield json.dumps({"type": "final", "data": fin.value}, ensure_ascii=False) + "\n"
         except Exception as e:
-            yield json.dumps({"type": "erreur", "message": f"{type(e).__name__} : {e}"}, ensure_ascii=False) + "\n"
+            yield json.dumps({"type": "erreur", "message": tr(f"Erreur interne : {type(e).__name__} : {e}", f"Internal error: {type(e).__name__}: {e}")}, ensure_ascii=False) + "\n"
         finally:
             ANNULATIONS.pop(ident, None)
 
