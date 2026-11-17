@@ -1,3 +1,13 @@
+## Nouveautés de la 1.5.1 / What's new in 1.5.1
+
+- **Écran de chargement** : la fenêtre s'ouvre tout de suite avec un indicateur « MA3-IA démarre… » au lieu de rester
+  invisible pendant le démarrage.
+- **Numéro de version** affiché dans l'en-tête de l'app (pastille `v1.5.1`).
+
+*English summary:* a loading screen appears immediately at launch, and the installed version number is shown in the header.
+
+---
+
 ## Nouveautés de la 1.5.0 / What's new in 1.5.0
 
 **🍎 MA3-IA sur Mac / MA3-IA on Mac**
