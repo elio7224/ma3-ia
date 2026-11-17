@@ -83,6 +83,7 @@ select.btn{padding:7px 10px;max-width:230px}.cost{font-size:.72rem;color:var(--m
     <a class="chip" id="modeVal" href="#" style="display:none;color:var(--ac3);border-color:var(--ac);text-decoration:none"></a>
     <a class="chip" id="plugMaj" href="#" style="display:none;color:var(--yl);border-color:var(--yl);text-decoration:none"></a>
     <a class="chip" id="maj" href="#" style="display:none;color:var(--yl);border-color:var(--yl);text-decoration:none"></a>
+    <span class="chip" id="ver" style="color:var(--mt,inherit)"></span>
     <span class="chip tot" id="cout" title="Coût estimé depuis le lancement de l'app, et plafond (⚙ Réglages)">Session : ≈ 0,000 $</span>
     <button id="bRescan" class="btn">🔄 Rescan</button>
     <button id="bNew" class="btn">🗑 Nouvelle conversation</button>
@@ -549,6 +550,8 @@ function ouvrirLien(url) {
 async function verifierVersion() {
   try {
     const v = await J("/version");
+    $("ver").textContent = "v" + v.actuelle;
+    $("ver").title = tr(`Version de MA3-IA installée : ${v.actuelle}`, `Installed MA3-IA version: ${v.actuelle}`);
     if (!v.nouvelle) return;
     const a = $("maj");
     a.textContent = tr(`⬆ Version ${v.derniere} disponible`, `⬆ Version ${v.derniere} available`);
