@@ -1,3 +1,15 @@
+## Nouveautés de la 1.5.2 / What's new in 1.5.2
+
+- **Interface épurée** : palette graphite avec un seul accent doré, plus de dégradés, de bulles ni d'avatar ;
+  les réponses de l'IA sont du texte simple dans une colonne centrée. Thème clair adapté.
+- **Nouveau logo** (graphite et doré), écran de chargement et barre de titre assortis.
+- Captures d'écran du README mises à jour.
+
+*English summary:* cleaner, simpler interface (graphite palette, single gold accent, no gradients or chat bubbles),
+new logo, matching loading screen and title bar.
+
+---
+
 ## Nouveautés de la 1.5.1 / What's new in 1.5.1
 
 - **Écran de chargement** : la fenêtre s'ouvre tout de suite avec un indicateur « MA3-IA démarre… » au lieu de rester
