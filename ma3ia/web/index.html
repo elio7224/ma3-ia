@@ -34,11 +34,11 @@ main{flex:1;display:flex;min-height:0}
 .m.assistant{display:block}
 .av{display:none}
 .md{min-width:0}
-.md>*+*{margin-top:10px}
-.md h2,.md h3,.md h4,.md h5{line-height:1.3;margin-top:18px;font-weight:600}.md h2{font-size:1.1rem}.md h3{font-size:1rem}.md h4,.md h5{font-size:.94rem}
-.md ul,.md ol{padding-left:22px}.md li+li{margin-top:4px}.md li::marker{color:var(--mu)}
-.md code{background:var(--bg3);border-radius:4px;padding:1px 5px;font:.86em Consolas,"Cascadia Mono",monospace}
-.md blockquote{border-left:2px solid var(--bd);padding-left:12px;color:var(--mu)}
+.md>*+*{margin-top:14px}
+.md h2,.md h3,.md h4,.md h5{line-height:1.3;margin-top:26px;font-weight:600}.md h2{font-size:1.2rem}.md h3{font-size:1.05rem;padding-bottom:6px;border-bottom:1px solid var(--bd)}.md h4,.md h5{font-size:.94rem;color:var(--ac)}.md>:first-child{margin-top:0}
+.md ul,.md ol{padding-left:22px}.md li+li{margin-top:9px}.md li{padding-left:2px}.md ol li::marker{color:var(--ac);font-weight:600}.md li::marker{color:var(--mu)}
+.md strong{font-weight:650}.md code{background:var(--bg3);border-radius:4px;padding:1px 6px;font:.86em Consolas,"Cascadia Mono",monospace}
+.md blockquote{border-left:3px solid var(--ac);background:var(--bg2);padding:10px 14px;border-radius:0 var(--r) var(--r) 0}
 .md hr{border:0;border-top:1px solid var(--bd)}.md a{color:var(--ac)}
 .tw{overflow-x:auto;border:1px solid var(--bd);border-radius:var(--r)}
 table{border-collapse:collapse;width:100%;font-size:.86rem}
@@ -166,7 +166,7 @@ function md(src) {
 const scroll = () => { const c = $("msgs"); c.scrollTop = c.scrollHeight; };
 function addMsg(role, text) {
   const d = document.createElement("div"); d.className = "m " + role;
-  if (role === "assistant") d.innerHTML = '<div class="av">AI</div><div class="md">' + md(text) + "</div>";
+  if (role === "assistant") d.innerHTML = '<div class="av">AI</div><div class="md">' + md(String(text).replace(/\n*\[ACTIONS\][\s\S]*?(\[\/ACTIONS\]|$)/, "")) + "</div>";
   else d.textContent = text;
   $("msgs").appendChild(d); scroll(); return d;
 }
