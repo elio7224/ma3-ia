@@ -104,7 +104,10 @@ def _lancer_plugin_index():
             except (ValueError, OSError):
                 pass            
         time.sleep(0.25)
-    return tr(f"Le plugin '{PLUGIN_NOM}' n'a pas produit {fichier} en {DELAI_MAX_PLUGIN} s.", f"The '{PLUGIN_NOM}' plugin did not produce {fichier} within {DELAI_MAX_PLUGIN} s.")
+    return tr(f"Le plugin '{PLUGIN_NOM}' n'a pas produit {fichier} en {DELAI_MAX_PLUGIN} s. OSC ne confirme rien : vérifie que la console est allumée "
+              "avec le show ouvert, que le plugin AI_Index est importé, et l'adresse / le port OSC dans ⚙ Réglages.",
+              f"The '{PLUGIN_NOM}' plugin did not produce {fichier} within {DELAI_MAX_PLUGIN} s. OSC confirms nothing: check that the console is on "
+              "with the show open, that the AI_Index plugin is imported, and the OSC address / port in ⚙ Settings.")
 
 
 def preparer_et_exporter_show() -> str:
