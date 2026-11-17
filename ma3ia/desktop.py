@@ -50,7 +50,7 @@ def attendre_serveur(port: int, delai: float = 20.0) -> bool:
 
 ICONE = os.path.join(reglages.dossier_ressources(), "assets", "ma3ia.ico")
 # Couleurs de la barre de titre (Windows), alignées sur les thèmes de index.html : (fond, texte, mode sombre)
-BARRE_TITRE = {"sombre": ("#0b0d14", "#e8eaf0", 1), "clair": ("#f4f5fa", "#1b1e2b", 0)}
+BARRE_TITRE = {"sombre": ("#141517", "#e7e6e2", 1), "clair": ("#f7f7f5", "#1e1f22", 0)}
 
 
 def identifier_application():
@@ -120,13 +120,13 @@ class ApiFenetre:
 def page_chargement(theme: str) -> str:
     """Page affichée tout de suite à l'ouverture de la fenêtre, le temps que le serveur local démarre."""
     from i18n import tr
-    fond, texte = ("#f4f5fa", "#1b1e2b") if theme == "clair" else ("#0b0d14", "#e8eaf0")
+    fond, texte = ("#f7f7f5", "#1e1f22") if theme == "clair" else ("#141517", "#e7e6e2")
     return (f"<body style='margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;"
             f"background:{fond};color:{texte};font-family:Segoe UI,system-ui,sans-serif'>"
             "<style>@keyframes t{to{transform:rotate(360deg)}}"
-            ".r{width:44px;height:44px;border:4px solid #8886;border-top-color:#6c8cff;border-radius:50%;animation:t .9s linear infinite}</style>"
+            ".r{width:44px;height:44px;border:4px solid #8886;border-top-color:#e3c07a;border-radius:50%;animation:t .9s linear infinite}</style>"
             "<div class='r'></div>"
-            f"<h2 style='margin:22px 0 6px;font-weight:600'>{tr('MA3-IA démarre…', 'MA3-IA is starting…')}</h2>"
+            f"<h2 style='margin:22px 0 6px;font-weight:500'>{tr('MA3-IA démarre…', 'MA3-IA is starting…')}</h2>"
             f"<div style='opacity:.65;font-size:14px'>{tr('Chargement en cours, quelques secondes…', 'Loading, this takes a few seconds…')}</div>")
 
 
@@ -140,7 +140,7 @@ def main():
     api = ApiFenetre()
     # La fenêtre s'ouvre tout de suite sur un écran de chargement ; le serveur démarre en parallèle.
     f = webview.create_window("grandMA3 AI Control", html=page_chargement(theme), width=1280, height=820,
-                              min_size=(900, 600), background_color="#0b0d14", text_select=True, js_api=api)
+                              min_size=(900, 600), background_color="#141517", text_select=True, js_api=api)
     api._fenetre = f
     f.events.shown += lambda: colorer_barre_titre(f, theme)
 
@@ -150,7 +150,7 @@ def main():
             f.load_url(f"http://127.0.0.1:{port}/")
         else:
             from i18n import tr
-            f.load_html("<body style='background:#0b0d14;color:#e8eaf0;font-family:sans-serif;padding:40px'>"
+            f.load_html("<body style='background:#141517;color:#e7e6e2;font-family:sans-serif;padding:40px'>"
                         + tr("<h2>Le serveur local n'a pas démarré.</h2><p>Relance l'application.</p>",
                              "<h2>The local server did not start.</h2><p>Restart the application.</p>"))
 
