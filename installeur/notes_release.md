@@ -1,3 +1,16 @@
+## Nouveautés de la 1.6.0 / What's new in 1.6.0
+
+- **L'IA peut modifier presque tous les objets par XML** : layouts, groupes, séquences, presets, shapes, MAtricks, macros.
+  Elle exporte l'objet, applique des remplacements exacts (nom, bordure, attributs…), garde l'original dans un fichier de
+  sauvegarde, puis réimporte avec `/Overwrite`. Aperçu possible avant l'envoi, compatible avec le mode validation.
+- **Lecture XML bien moins coûteuse en tokens** : `chercher` renvoie seulement les lignes qui contiennent un mot, avec tous leurs attributs.
+
+*English summary:* the AI can now edit layouts, groups, sequences, presets, shapes, MAtricks and macros through XML
+(exact text replacements, original kept as a backup, re-import with `/Overwrite`, preview and approval mode supported).
+Reading XML is much cheaper in tokens thanks to a new search option.
+
+---
+
 ## Nouveautés de la 1.5.4 / What's new in 1.5.4
 
 - **Réponses de l'IA mieux mises en page** : titres, puces aérées, étapes numérotées en pastilles, encarts colorés
