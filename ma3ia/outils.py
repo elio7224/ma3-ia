@@ -5,6 +5,7 @@ from tools import (
     create_macro,
     generate_macros_from_template,
     lire_xml_temp,
+    modifier_xml,
     run_command,
 )
 
@@ -38,6 +39,9 @@ TOOLS = [
             "properties": {
                 "nom_objet": {"type": "string", "description": "'section/numéro' (ex : macros/2002) ou nom exact de l'index"},
                 "partie": {"type": "integer", "description": "Numéro de la partie à lire (1 par défaut)", "minimum": 1},
+                "brut": {"type": "boolean", "description": "true = XML brut exact (nécessaire avant modifier_xml)"},
+                "chercher": {"type": "string", "description": "Mot à trouver (nom d'élément, Name, attribut…) : renvoie seulement les lignes du XML brut qui le contiennent, avec TOUS leurs attributs. À préférer à brut=true, bien moins coûteux."},
+                "contexte": {"type": "integer", "description": "Lignes affichées autour de chaque résultat de 'chercher' (0 à 5)"},
             },
             "required": ["nom_objet"]
         }
@@ -69,6 +73,28 @@ TOOLS = [
                 "lines": {"type": "array", "items": {"type": "string"}}
             },
             "required": ["number", "name", "lines"]
+        }
+    },
+    {
+        "name": "modifier_xml",
+        "description": (
+            "Modifie un objet existant (layout, groupe, séquence, preset, shape, macro, matricks) : exporte son XML brut, "
+            "applique des remplacements de texte exacts, garde l'original, puis réimporte avec /Overwrite. "
+            "Procédure : 1) lire_xml_temp(chercher='<mot>') pour voir les lignes exactes concernées (jamais brut=true en entier : très coûteux), 2) modifier_xml(dry_run=true) pour l'aperçu, "
+            "3) même appel sans dry_run. Les textes 'ancien' doivent exister dans le XML brut (ex : Name=\"Ancien\")."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "section": {"type": "string", "description": "layouts, groups, macros, sequences, presets, shapes, matricks"},
+                "numero": {"type": "string"},
+                "remplacements": {"type": "array", "items": {"type": "object", "properties": {
+                    "ancien": {"type": "string"}, "nouveau": {"type": "string"},
+                    "tout": {"type": "boolean", "description": "true = remplacer toutes les occurrences"}},
+                    "required": ["ancien", "nouveau"]}},
+                "dry_run": {"type": "boolean"}
+            },
+            "required": ["section", "numero", "remplacements"]
         }
     },
     {
@@ -126,6 +152,7 @@ FUNCS = {
     "lire_xml_temp": lire_xml_temp,
     "configure_matricks": configure_matricks,
     "create_macro": create_macro,
+    "modifier_xml": modifier_xml,
     "run_command": run_command,
     "generate_macros_from_template": generate_macros_from_template
 }
