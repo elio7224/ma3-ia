@@ -20,6 +20,17 @@ def capture():
         _local.capture = None
 
 
+@contextmanager
+def sans_capture():
+    """Suspend le mode validation (pour les exports : lire n'écrit rien dans la console)."""
+    avant = getattr(_local, "capture", None)
+    _local.capture = None
+    try:
+        yield
+    finally:
+        _local.capture = avant
+
+
 def en_capture() -> bool:
     return getattr(_local, "capture", None) is not None
 

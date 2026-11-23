@@ -353,7 +353,28 @@ def _decouper(texte: str, taille: int = TAILLE_PARTIE) -> list:
     return parties or [""]
 
 
-def lire_xml_temp(nom_objet: str = "", partie: int = 1) -> str:
+def _lignes_contenant(xml: str, mot: str, contexte: int = 0, maxi: int = 60) -> str:
+    """Lignes du XML brut contenant `mot` (toutes leurs attributs gardés), avec `contexte` lignes autour."""
+    lignes = xml.splitlines()
+    try:
+        contexte = max(0, min(int(contexte), 5))
+    except (TypeError, ValueError):
+        contexte = 0
+    trouvees = [i for i, l in enumerate(lignes) if mot.lower() in l.lower()]
+    if not trouvees:
+        return tr(f"Aucune ligne ne contient « {mot} ».", f"No line contains \"{mot}\".")
+    sortie, vues = [], set()
+    for i in trouvees[:maxi]:
+        for k in range(max(0, i - contexte), min(len(lignes), i + contexte + 1)):
+            if k not in vues:
+                vues.add(k)
+                sortie.append(lignes[k].strip())
+    if len(trouvees) > maxi:
+        sortie.append(tr(f"[… {len(trouvees) - maxi} autre(s) ligne(s) : précise le mot cherché]", f"[… {len(trouvees) - maxi} more line(s): narrow the search]"))
+    return "\n".join(sortie)
+
+
+def lire_xml_temp(nom_objet: str = "", partie: int = 1, brut: bool = False, chercher: str = "", contexte: int = 0) -> str:
     if not nom_objet or not nom_objet.strip():
         return tr("Aucun objet spécifié pour la lecture.", "No object given to read.")
     if not INDEX_OBJETS:
@@ -405,7 +426,14 @@ def lire_xml_temp(nom_objet: str = "", partie: int = 1) -> str:
     if chemin is None:
         return tr(f"L'export de {s}/{numero} n'a pas produit de fichier.", f"Exporting {s}/{numero} produced no file.")
     try:
-        contenu = compacter_xml(chemin)
+        brut = brut or bool(chercher)
+        if brut:
+            with open(chemin, encoding="utf-8-sig") as f:
+                contenu = f.read()
+            if chercher:
+                contenu = _lignes_contenant(contenu, chercher, contexte)
+        else:
+            contenu = compacter_xml(chemin)
     except Exception as e:
         return tr(f"Erreur de lecture : {e}", f"Read error: {e}")
     parties = _decouper(contenu, TAILLE_PARTIE)
@@ -415,7 +443,7 @@ def lire_xml_temp(nom_objet: str = "", partie: int = 1) -> str:
         partie = 1
     if not 1 <= partie <= len(parties):
         return tr(f"Partie {partie} inexistante : {s}/{numero} a {len(parties)} partie(s).", f"Part {partie} does not exist: {s}/{numero} has {len(parties)} part(s).")
-    entete = f'--- {s}/{numero} « {nom} » (format compact'
+    entete = f'--- {s}/{numero} « {nom} » (format ' + ('lignes du XML brut' if chercher else 'XML brut' if brut else 'compact')
     if len(parties) > 1:
         entete += f", partie {partie}/{len(parties)}"
     entete += ") ---"
@@ -438,6 +466,59 @@ def create_macro(number: int = 1, name: str = "Macro Sans Nom", lines: list[str]
     for c in commandes:
         ma3.send(c)
     return tr(f"Macro {number} créée avec succès ({len(lines)} lignes).", f"Macro {number} created ({len(lines)} lines).")
+
+
+def modifier_xml(section: str = "", numero: str = "", remplacements: list = None, dry_run: bool = False) -> str:
+    """Exporte l'objet, applique des remplacements de texte sur son XML brut, sauvegarde l'original, puis le réimporte."""
+    section = (section or "").strip().lower()
+    numero = str(numero).strip()
+    if section not in MOTS_CLES_MA3 or section == "appearances":
+        return tr(f"Erreur : section '{section}' non modifiable (choix : layouts, groups, macros, sequences, presets, shapes, matricks).",
+                  f"Error: section '{section}' cannot be modified (choose: layouts, groups, macros, sequences, presets, shapes, matricks).")
+    if not re.match(r"^\d+(?:\.\d+)?$", numero):
+        return tr("Erreur : numero invalide.", "Error: invalid numero.")
+    if not remplacements:
+        return tr("Erreur : remplacements est vide.", "Error: remplacements is empty.")
+    with osc.sans_capture():       # l'export est une lecture : il part même en mode validation
+        chemin = _exporter_objet(section, numero)
+    if chemin is None:
+        return tr(f"Erreur : l'export de {section}/{numero} n'a produit aucun fichier.", f"Error: exporting {section}/{numero} produced no file.")
+    with open(chemin, encoding="utf-8-sig") as f:
+        original = f.read()
+    xml, bilan = original, []
+    for r in remplacements:
+        ancien, nouveau = str(r.get("ancien", "")), str(r.get("nouveau", ""))
+        n = xml.count(ancien) if ancien else 0
+        if n == 0:
+            return tr(f"Erreur : « {ancien} » introuvable dans le XML (rien n'a été envoyé). Relis-le avec lire_xml_temp(chercher=…).",
+                      f"Error: \"{ancien}\" not found in the XML (nothing sent). Read it with lire_xml_temp(chercher=…).")
+        if n > 1 and not r.get("tout"):
+            return tr(f"Erreur : « {ancien} » apparaît {n} fois ; précise le texte ou mets tout=true (rien n'a été envoyé).",
+                      f"Error: \"{ancien}\" appears {n} times; be more specific or set tout=true (nothing sent).")
+        xml = xml.replace(ancien, nouveau)
+        bilan.append(f"- {n}x « {ancien} » -> « {nouveau} »")
+    try:
+        ET.fromstring(xml.encode("utf-8"))
+    except ET.ParseError as e:
+        return tr(f"Erreur : le XML obtenu est invalide ({e}), rien n'a été envoyé.", f"Error: resulting XML is invalid ({e}), nothing sent.")
+    if dry_run:
+        return tr("Aperçu (rien envoyé) :", "Preview (nothing sent):") + "\n" + "\n".join(bilan)
+    dossier = os.path.dirname(_dossier_section(section))
+    base = f"{PREFIXE_XML_MACRO}{section}_{numero}_{int(time.time() * 1000)}"
+    sauv = os.path.join(dossier, f"ma3ia_sauvegarde_{numero}_{int(time.time())}.xml")
+    try:
+        _nettoyer_xml_anciens(dossier)
+        with open(sauv, "w", encoding="utf-8", newline="\n") as f:
+            f.write(original)
+        with open(os.path.join(dossier, base + ".xml"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(xml)
+    except OSError as e:
+        return tr(f"Erreur : fichier XML non écrit ({e}).", f"Error: XML file not written ({e}).")
+    note = sauvegarder_avant_masse()
+    ma3.send(f'Import {MOTS_CLES_MA3[section]} {numero} "{base}" /Overwrite')
+    return (tr(f"{section}/{numero} modifié et réimporté (original gardé : {os.path.basename(sauv)}).",
+               f"{section}/{numero} modified and re-imported (original kept: {os.path.basename(sauv)}).")
+            + "\n" + "\n".join(bilan) + f"\n{note}")
 
 
 def configure_matricks(number: int = 1, name: str = "MAtricks", xgroup: int = None, xblock: int = None, xwings: int = None, interleave: int = None) -> str:
